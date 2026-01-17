@@ -27,6 +27,7 @@ const getCompanySettings = async (req, res) => {
           website: "",
           logoUrl: "",
           faviconUrl: "",
+          mapIframe: "",
           socialMedia: {
             facebook: "",
             twitter: "",
@@ -81,6 +82,7 @@ const saveCompanySettings = async (req, res) => {
       logoUrl,
       faviconUrl,
       socialMedia,
+      mapIframe,
     } = req.body;
 
     // Validation
@@ -133,6 +135,7 @@ const saveCompanySettings = async (req, res) => {
       website: website?.trim() || "",
       logoUrl: logoUrl?.trim() || "",
       faviconUrl: faviconUrl?.trim() || "",
+      mapIframe: mapIframe?.trim() || "",
       socialMedia: socialMedia || {
         facebook: "",
         twitter: "",
