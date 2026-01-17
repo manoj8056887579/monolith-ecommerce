@@ -409,8 +409,8 @@ export default function ExpensesSummaryReport() {
                   </TableRow>
                 ) : (
                   currentItems.map((expense, index) => (
-                    <TableRow key={`${expense.expenseId}-${index}`}>
-                      <TableCell className="font-medium">{expense.expenseId}</TableCell>
+                    <TableRow key={`${expense.expenseNumber}-${index}`}>
+                      <TableCell className="font-medium">{expense.expenseNumber}</TableCell>
                       <TableCell>{format(new Date(expense.expenseDate), "dd/MM/yyyy")}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{expense.categoryName}</Badge>

@@ -1,5 +1,5 @@
 const { prisma } = require("../../config/database");
-const { uploadToS3, getPresignedUrl, deleteFromS3 } = require("../../utils/web/uploadsS3");
+const { uploadToS3, getPresignedUrl, deleteFromS3, getS3Object } = require("../../utils/web/uploadsS3");
 
 // Get current web settings
 const getWebSettings = async (req, res) => {
@@ -13,16 +13,24 @@ const getWebSettings = async (req, res) => {
       });
     }
 
-    // Generate presigned URLs for the keys stored in database
-    const logoPresignedUrl = settings.logoUrl ? await getPresignedUrl(settings.logoUrl) : null;
-    const faviconPresignedUrl = settings.faviconUrl ? await getPresignedUrl(settings.faviconUrl) : null;
+    // Use proxy endpoints instead of presigned URLs to avoid CORS issues
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+    
+    const logoUrl = settings.logoUrl
+      ? `${baseUrl}/api/web/web-settings/logo`
+      : null;
+    const faviconUrl = settings.faviconUrl
+      ? `${baseUrl}/api/web/web-settings/favicon`
+      : null;
 
     const response = {
       id: settings.id,
-      logoUrl: logoPresignedUrl, // Presigned URL for frontend
-      faviconUrl: faviconPresignedUrl, // Presigned URL for frontend
-      logoKey: settings.logoUrl, // Original key (optional, for reference)
-      faviconKey: settings.faviconUrl, // Original key (optional, for reference)
+      logoUrl, // Proxy URL instead of presigned URL
+      faviconUrl, // Proxy URL instead of presigned URL
+      logoKey: settings.logoUrl, // Original S3 key
+      faviconKey: settings.faviconUrl, // Original S3 key
       updatedAt: settings.updatedAt,
       createdAt: settings.createdAt,
     };
@@ -219,10 +227,78 @@ const deleteFavicon = async (req, res) => {
   }
 };
 
+/**
+ * Proxy logo image from S3 (avoids CORS issues)
+ */
+const proxyLogo = async (req, res) => {
+  try {
+    const settings = await prisma.webSettings.findFirst();
+
+    if (!settings || !settings.logoUrl) {
+      return res.status(404).json({
+        success: false,
+        error: "Logo not found",
+      });
+    }
+
+    // Get the S3 object
+    const s3Object = await getS3Object(settings.logoUrl);
+
+    // Set appropriate headers
+    res.setHeader("Content-Type", s3Object.ContentType || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+    res.setHeader("Access-Control-Allow-Origin", "*"); // Allow CORS
+
+    // Stream the image
+    s3Object.Body.pipe(res);
+  } catch (error) {
+    console.error("Error proxying logo:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch logo",
+    });
+  }
+};
+
+/**
+ * Proxy favicon image from S3 (avoids CORS issues)
+ */
+const proxyFavicon = async (req, res) => {
+  try {
+    const settings = await prisma.webSettings.findFirst();
+
+    if (!settings || !settings.faviconUrl) {
+      return res.status(404).json({
+        success: false,
+        error: "Favicon not found",
+      });
+    }
+
+    // Get the S3 object
+    const s3Object = await getS3Object(settings.faviconUrl);
+
+    // Set appropriate headers
+    res.setHeader("Content-Type", s3Object.ContentType || "image/x-icon");
+    res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+    res.setHeader("Access-Control-Allow-Origin", "*"); // Allow CORS
+
+    // Stream the image
+    s3Object.Body.pipe(res);
+  } catch (error) {
+    console.error("Error proxying favicon:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch favicon",
+    });
+  }
+};
+
 module.exports = {
   getWebSettings,
   uploadLogo,
   uploadFavicon,
   deleteLogo,
   deleteFavicon,
+  proxyLogo,
+  proxyFavicon,
 };

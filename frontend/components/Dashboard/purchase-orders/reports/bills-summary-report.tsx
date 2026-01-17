@@ -139,7 +139,7 @@ export default function BillsSummaryReport() {
 
   const fetchWarehouses = async () => {
     try {
-      const response = await axiosInstance.get("/api/purchase/warehouses");
+      const response = await axiosInstance.get("/api/inventory/warehouses");
       if (response.data.success) {
         setWarehouses(response.data.data);
       }

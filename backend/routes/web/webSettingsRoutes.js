@@ -7,10 +7,18 @@ const {
   uploadFavicon,
   deleteLogo,
   deleteFavicon,
+  proxyLogo,
+  proxyFavicon,
 } = require("../../controllers/web/webSettingsController");
 
 // Get web settings
 router.get("/", getWebSettings);
+
+// Proxy logo (serve image directly - avoids CORS)
+router.get("/logo", proxyLogo);
+
+// Proxy favicon (serve image directly - avoids CORS)
+router.get("/favicon", proxyFavicon);
 
 // Upload logo
 router.post("/logo", upload.single("logo"), uploadLogo);

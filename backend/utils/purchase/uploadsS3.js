@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const multer = require("multer");
 require("dotenv").config();
@@ -16,27 +16,26 @@ const s3Client = new S3Client({
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|svg|ico/;
+  const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|xls|xlsx/;
   const mimetype = allowedTypes.test(file.mimetype);
   const extname = allowedTypes.test(file.originalname.toLowerCase());
 
   if (mimetype && extname) {
     return cb(null, true);
   }
-  cb(new Error("Only image files (JPEG, PNG, SVG, ICO) are allowed"));
+  cb(new Error("Only documents and images are allowed"));
 };
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
   fileFilter: fileFilter,
 });
 
 // Upload file to S3
-const uploadToS3 = async (file, folder = "web-settings") => {
+const uploadToS3 = async (file, folder = "purchase") => {
   const fileName = `${folder}/${Date.now()}-${file.originalname}`;
   const bucketName = process.env.AWS_S3_BUCKET_NAME || "mnt-ecommerce-2025";
-  const region = process.env.AWS_REGION || "eu-north-1";
 
   const params = {
     Bucket: bucketName,
@@ -46,22 +45,16 @@ const uploadToS3 = async (file, folder = "web-settings") => {
   };
 
   try {
-    console.log("Uploading to S3:", {
-      bucket: bucketName,
-      key: fileName,
-      region,
-    });
     await s3Client.send(new PutObjectCommand(params));
-    
-    console.log("Upload successful:", fileName);
-    return fileName; // Return only the key/path
+    console.log("✅ Upload successful:", fileName);
+    return fileName; // Return just the key
   } catch (error) {
-    console.error("Error uploading to S3:", error);
+    console.error("❌ Error uploading to S3:", error);
     throw new Error("Failed to upload file to S3");
   }
 };
 
-// Generate presigned URL for secure access (expires in 1 hour by default)
+// Generate pre-signed URL for secure access (expires in 1 hour by default)
 const getPresignedUrl = async (key, expiresIn = 3600) => {
   if (!key) return null;
   
@@ -73,9 +66,9 @@ const getPresignedUrl = async (key, expiresIn = 3600) => {
     const match = key.match(s3UrlPattern);
     
     if (match) {
-      key = match[1]; // Extract the key
+      key = match[1];
     } else {
-      return key; // Return as-is if not an S3 URL
+      return key;
     }
   }
   
@@ -87,11 +80,10 @@ const getPresignedUrl = async (key, expiresIn = 3600) => {
       Key: key,
     });
     
-    // Generate presigned URL that expires in specified seconds
     const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
     return presignedUrl;
   } catch (error) {
-    console.error("Error generating presigned URL:", error);
+    console.error("❌ Error generating pre-signed URL:", error);
     return null;
   }
 };
@@ -110,7 +102,7 @@ const deleteFromS3 = async (key) => {
     if (match) {
       key = match[1];
     } else {
-      console.log("Not an S3 URL, skipping delete:", key);
+      console.log("⚠️ Not an S3 URL, skipping delete:", key);
       return;
     }
   }
@@ -123,35 +115,11 @@ const deleteFromS3 = async (key) => {
   };
   
   try {
-    console.log("Deleting from S3:", { bucket: bucketName, key });
     await s3Client.send(new DeleteObjectCommand(params));
-    console.log("Delete successful:", key);
+    console.log("✅ Delete successful:", key);
   } catch (error) {
-    console.error("Error deleting from S3:", error);
+    console.error("❌ Error deleting from S3:", error);
   }
 };
 
-// Get S3 object (for streaming)
-const getS3Object = async (key) => {
-  if (!key) {
-    throw new Error("S3 key is required");
-  }
-
-  const bucketName = process.env.AWS_S3_BUCKET_NAME || "mnt-ecommerce-2025";
-
-  const params = {
-    Bucket: bucketName,
-    Key: key,
-  };
-
-  try {
-    const command = new GetObjectCommand(params);
-    const response = await s3Client.send(command);
-    return response;
-  } catch (error) {
-    console.error("Error getting S3 object:", error);
-    throw new Error("Failed to get file from S3");
-  }
-};
-
-module.exports = { upload, uploadToS3, getPresignedUrl, deleteFromS3, getS3Object };
+module.exports = { upload, uploadToS3, getPresignedUrl, deleteFromS3 };

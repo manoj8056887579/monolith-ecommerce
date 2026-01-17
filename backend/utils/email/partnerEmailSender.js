@@ -39,7 +39,7 @@ async function sendPartnerEmail(emailData) {
  * Send welcome email to approved partner
  */
 async function sendPartnerWelcomeEmail({ name, email, partnerId, password, verificationToken }) {
-  const emailTemplate = getApprovedEmailTemplate({ 
+  const emailTemplate = await getApprovedEmailTemplate({ 
     name, 
     email, 
     partnerId, 
@@ -58,7 +58,7 @@ async function sendPartnerWelcomeEmail({ name, email, partnerId, password, verif
  * Send rejection email
  */
 async function sendPartnerRejectionEmail({ name, email, reason, note }) {
-  const emailTemplate = getRejectedEmailTemplate({ 
+  const emailTemplate = await getRejectedEmailTemplate({ 
     name, 
     email, 
     reason, 
@@ -76,7 +76,7 @@ async function sendPartnerRejectionEmail({ name, email, reason, note }) {
  * Send suspension email
  */
 async function sendPartnerSuspensionEmail({ name, email, partnerId, reason, note }) {
-  const emailTemplate = getSuspendedEmailTemplate({ 
+  const emailTemplate = await getSuspendedEmailTemplate({ 
     name, 
     email, 
     partnerId, 

@@ -1,10 +1,30 @@
+const { prisma } = require("../../../../config/database");
+const { getPresignedUrl } = require("../../../web/uploadsS3");
+
+/**
+ * Fetch company logo from web settings
+ */
+async function getCompanyLogo() {
+  try {
+    const webSettings = await prisma.webSettings.findFirst();
+    if (webSettings && webSettings.logoUrl) {
+      return await getPresignedUrl(webSettings.logoUrl);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching company logo:", error);
+    return null;
+  }
+}
+
 /**
  * Delivery Partner Rejection Email Template
  */
-function getRejectedEmailTemplate({ name, email, reason, note }) {
+async function getRejectedEmailTemplate({ name, email, reason, note }) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
   const supportEmail = process.env.SUPPORT_EMAIL || "support@example.com";
   const reapplyLink = `${frontendUrl}/partner/apply`;
+  const logoUrl = await getCompanyLogo();
 
   return {
     subject: "Delivery Partner Application Status Update",
@@ -29,8 +49,25 @@ function getRejectedEmailTemplate({ name, email, reason, note }) {
             background: #dc3545; 
             color: white; 
             padding: 30px; 
-            text-align: center; 
-            border-radius: 10px 10px 0 0; 
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .header-left {
+            flex: 0 0 auto;
+          }
+          .header-logo {
+            max-width: 180px;
+            max-height: 80px;
+          }
+          .header-right {
+            flex: 1;
+            text-align: right;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
           }
           .content { 
             background: #f9f9f9; 
@@ -86,7 +123,12 @@ function getRejectedEmailTemplate({ name, email, reason, note }) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Application Status Update</h1>
+            <div class="header-left">
+              ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo" class="header-logo" />` : ''}
+            </div>
+            <div class="header-right">
+              <h1>Application Status Update</h1>
+            </div>
           </div>
           
           <div class="content">

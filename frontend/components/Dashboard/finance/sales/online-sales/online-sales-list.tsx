@@ -32,7 +32,7 @@ import {
 import { useCurrency } from "@/hooks/useCurrency";
 import { financeService, type SalesOrder, type SalesFilters } from "@/services/financeService";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvoiceView } from "../../../orders/InvoiceView";
 
 const paymentStatusColors: Record<
@@ -162,6 +162,7 @@ export default function OnlineSalesList() {
 
   useEffect(() => {
     fetchSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, paymentStatusFilter, dateRange]);
 
   // Debounced search
@@ -175,6 +176,7 @@ export default function OnlineSalesList() {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, orderStatusFilter]);
 
   // Generate page numbers
@@ -226,11 +228,11 @@ export default function OnlineSalesList() {
       deliveryAddress: sale.deliveryAddress,
       items: [], // Items will be loaded from the order details if needed
       subtotal: sale.subtotal,
-      tax: sale.taxAmount,
+      tax: sale.tax, // Fixed: was taxAmount
       discount: sale.discount,
       couponDiscount: sale.couponDiscount || 0,
       shippingCharge: sale.shippingCharge || 0,
-      total: sale.totalAmount,
+      total: sale.total, // Fixed: was totalAmount
       paymentMethod: sale.paymentMethod,
       paymentStatus: sale.paymentStatus,
       orderStatus: sale.orderStatus,
@@ -238,7 +240,7 @@ export default function OnlineSalesList() {
       updatedAt: sale.createdAt,
     };
     
-    setSelectedSale(orderForInvoice as any);
+    setSelectedSale(orderForInvoice as unknown as SalesOrder);
     setShowInvoiceModal(true);
   };
 
@@ -509,7 +511,7 @@ export default function OnlineSalesList() {
 
       {/* Invoice View Modal */}
       <InvoiceView
-        order={selectedSale as any}
+        order={selectedSale as unknown as Parameters<typeof InvoiceView>[0]['order']}
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
       />

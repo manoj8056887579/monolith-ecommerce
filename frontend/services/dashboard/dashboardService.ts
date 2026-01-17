@@ -26,6 +26,17 @@ interface TopSellingItem {
   totalQuantitySold: number;
 }
 
+interface Sale {
+  accountingPeriod?: string;
+  saleDate: string;
+  total: number;
+  tax?: number;
+  discount?: number;
+  couponDiscount?: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+}
+
 interface EODData {
   totalUnits?: number;
   totalValue?: number;
@@ -63,14 +74,14 @@ export const dashboardService = {
       
       // Fetch both POS and Online orders from order-service
       const [posResponse, onlineResponse] = await Promise.all([
-        axiosInstance.get('/api/order/pos-orders', {
+        axiosInstance.get('/api/pos/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
             limit: 1000
           }
         }).catch(() => ({ data: { data: [] } })),
-        axiosInstance.get('/api/order/online-orders', {
+        axiosInstance.get('/api/online/admin/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -105,14 +116,14 @@ export const dashboardService = {
       
       // Fetch both POS and Online orders from order-service
       const [posResponse, onlineResponse] = await Promise.all([
-        axiosInstance.get('/api/order/pos-orders', {
+        axiosInstance.get('/api/pos/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
             limit: 1000
           }
         }).catch(() => ({ data: { data: [] } })),
-        axiosInstance.get('/api/order/online-orders', {
+        axiosInstance.get('/api/online/admin/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -150,14 +161,14 @@ export const dashboardService = {
       
       // Fetch both POS and Online orders from order-service
       const [posResponse, onlineResponse] = await Promise.all([
-        axiosInstance.get('/api/order/pos-orders', {
+        axiosInstance.get('/api/pos/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
             limit: 1000
           }
         }).catch(() => ({ data: { data: [] } })),
-        axiosInstance.get('/api/order/online-orders', {
+        axiosInstance.get('/api/online/admin/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -209,7 +220,7 @@ export const dashboardService = {
       // Fetch cancelled orders from both POS and Online
       // POS uses orderStatus parameter, Online uses status parameter
       const [posResponse, onlineResponse] = await Promise.all([
-        axiosInstance.get('/api/order/pos-orders', {
+        axiosInstance.get('/api/pos/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -217,7 +228,7 @@ export const dashboardService = {
             limit: 1000
           }
         }).catch(() => ({ data: { data: [] } })),
-        axiosInstance.get('/api/order/online-orders', {
+        axiosInstance.get('/api/online/admin/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -272,14 +283,14 @@ export const dashboardService = {
       
       // Fetch both POS and Online orders from order-service
       const [posResponse, onlineResponse] = await Promise.all([
-        axiosInstance.get('/api/order/pos-orders', {
+        axiosInstance.get('/api/pos/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
             limit: 1000
           }
         }).catch(() => ({ data: { data: [] } })),
-        axiosInstance.get('/api/order/online-orders', {
+        axiosInstance.get('/api/online/admin/orders', {
           params: { 
             startDate: start,
             endDate: endDateISO,
@@ -291,15 +302,17 @@ export const dashboardService = {
       const posOrders: Order[] = posResponse.data.data || [];
       const onlineOrders: Order[] = onlineResponse.data.data || [];
       
-      // POS orders are mostly completed, so we focus on online orders for operations
-      // Online order statuses: pending, confirmed, packing, shipped, delivered, cancelled
+      // Combine both POS and online orders for complete operations view
+      // POS orders are mostly completed, online orders have various statuses
+      const allOrders = [...posOrders, ...onlineOrders];
+      
       return {
-        pending: onlineOrders.filter((o) => o.orderStatus === 'pending').length,
-        confirmed: onlineOrders.filter((o) => o.orderStatus === 'confirmed').length,
-        packing: onlineOrders.filter((o) => o.orderStatus === 'packing').length,
-        shipped: onlineOrders.filter((o) => o.orderStatus === 'shipped').length,
-        delivered: onlineOrders.filter((o) => o.orderStatus === 'delivered').length,
-        cancelled: onlineOrders.filter((o) => o.orderStatus === 'cancelled').length
+        pending: allOrders.filter((o) => o.orderStatus === 'pending').length,
+        confirmed: allOrders.filter((o) => o.orderStatus === 'confirmed').length,
+        packing: allOrders.filter((o) => o.orderStatus === 'packing').length,
+        shipped: allOrders.filter((o) => o.orderStatus === 'shipped').length,
+        delivered: allOrders.filter((o) => o.orderStatus === 'delivered').length,
+        cancelled: allOrders.filter((o) => o.orderStatus === 'cancelled').length
       };
     } catch (error) {
       console.error('Error fetching order operations:', error);
@@ -396,45 +409,26 @@ export const dashboardService = {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      // If no dates provided, use today
-      const start = startDate || today;
+      // If no dates provided, use current month
+      const start = startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
       const end = endDate || today;
       
-      // Fetch sales summary from finance service (includes payment breakdown and monthly trends)
-      const summaryResponse = await axiosInstance.get('/api/finance/sales/summary', {
+      // Fetch actual sales data from finance service
+      const salesResponse = await axiosInstance.get('/api/finance/sales', {
         params: { 
           startDate: start,
-          endDate: end
+          endDate: end,
+          limit: 10000 // Get all sales for the period
         }
       }).catch((err) => {
-        console.warn('Sales summary API error:', err.message);
-        return { data: { success: false, data: null } };
+        console.warn('Sales API error:', err.message);
+        return { data: { success: false, data: [] } };
       });
       
-      interface MonthlyDataItem {
-        period: string;
-        month: string;
-        year: number;
-        revenue: number;
-        expenses: number;
-        orders: number;
-        tax: number;
-        discount: number;
-      }
-
-      interface PaymentMethodItem {
-        method: string;
-        totalAmount: number;
-        totalOrders: number;
-        paid: number;
-        pending: number;
-        failed: number;
-      }
+      const sales = salesResponse.data.data || [];
       
-      const summary = summaryResponse.data.data;
-      
-      if (!summary) {
-        console.warn('No sales summary data available');
+      if (sales.length === 0) {
+        console.warn('No sales data available for payment finance');
         return {
           paymentSplit: { cod: 0, prepaid: 0 },
           pendingCOD: 0,
@@ -444,122 +438,120 @@ export const dashboardService = {
         };
       }
 
-      // Transform monthly trends into MonthlyDataItem format
-      const monthlyDataMap = new Map<string, MonthlyDataItem>();
+      // Group by accounting period for monthly data
+      const monthlyDataMap = new Map<string, {
+        period: string;
+        month: string;
+        year: number;
+        revenue: number;
+        expenses: number;
+        orders: number;
+        tax: number;
+        discount: number;
+      }>();
       
-      // Combine POS and Online monthly trends
-      if (summary.monthlyTrends?.pos) {
-        summary.monthlyTrends.pos.forEach((item: any) => {
-          const [year, month] = item.accountingPeriod.split('-');
-          monthlyDataMap.set(item.accountingPeriod, {
-            period: item.accountingPeriod,
+      // Group by payment method
+      const paymentMethodMap = new Map<string, {
+        method: string;
+        totalAmount: number;
+        totalOrders: number;
+        paid: number;
+        pending: number;
+        failed: number;
+      }>();
+      
+      // Process each sale
+      sales.forEach((sale: Sale) => {
+        // Monthly data
+        const period = sale.accountingPeriod || `${new Date(sale.saleDate).getFullYear()}-${String(new Date(sale.saleDate).getMonth() + 1).padStart(2, '0')}`;
+        const [year, month] = period.split('-');
+        
+        if (!monthlyDataMap.has(period)) {
+          monthlyDataMap.set(period, {
+            period,
             month: month || '',
             year: parseInt(year) || 0,
-            revenue: item._sum.totalAmount || 0,
+            revenue: 0,
             expenses: 0,
-            orders: item._count.id || 0,
+            orders: 0,
             tax: 0,
             discount: 0,
           });
-        });
-      }
-
-      if (summary.monthlyTrends?.online) {
-        summary.monthlyTrends.online.forEach((item: any) => {
-          const [year, month] = item.accountingPeriod.split('-');
-          const existing = monthlyDataMap.get(item.accountingPeriod);
-          if (existing) {
-            existing.revenue += item._sum.totalAmount || 0;
-            existing.orders += item._count.id || 0;
-          } else {
-            monthlyDataMap.set(item.accountingPeriod, {
-              period: item.accountingPeriod,
-              month: month || '',
-              year: parseInt(year) || 0,
-              revenue: item._sum.totalAmount || 0,
-              expenses: 0,
-              orders: item._count.id || 0,
-              tax: 0,
-              discount: 0,
-            });
-          }
-        });
-      }
-
+        }
+        
+        const monthData = monthlyDataMap.get(period)!;
+        monthData.revenue += sale.total || 0;
+        monthData.orders += 1;
+        monthData.tax += sale.tax || 0;
+        monthData.discount += (sale.discount || 0) + (sale.couponDiscount || 0);
+        
+        // Payment method data
+        const paymentMethod = sale.paymentMethod || 'unknown';
+        const paymentStatus = sale.paymentStatus || 'unknown';
+        
+        if (!paymentMethodMap.has(paymentMethod)) {
+          paymentMethodMap.set(paymentMethod, {
+            method: paymentMethod,
+            totalAmount: 0,
+            totalOrders: 0,
+            paid: 0,
+            pending: 0,
+            failed: 0,
+          });
+        }
+        
+        const methodData = paymentMethodMap.get(paymentMethod)!;
+        methodData.totalAmount += sale.total || 0;
+        methodData.totalOrders += 1;
+        
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
+          methodData.paid += 1;
+        } else if (paymentStatus === 'pending') {
+          methodData.pending += 1;
+        } else if (paymentStatus === 'failed') {
+          methodData.failed += 1;
+        }
+      });
+      
       const monthlyData = Array.from(monthlyDataMap.values()).sort((a, b) => 
         a.period.localeCompare(b.period)
       );
-
-      // Transform payment breakdown into PaymentMethodItem format
-      const paymentMethods: PaymentMethodItem[] = [];
       
-      if (summary.paymentBreakdown?.pos) {
-        summary.paymentBreakdown.pos.forEach((item: any) => {
-          const existing = paymentMethods.find(p => p.method === item.paymentStatus);
-          if (existing) {
-            existing.totalAmount += item._sum.totalAmount || 0;
-            existing.totalOrders += item._count.id || 0;
-          } else {
-            paymentMethods.push({
-              method: item.paymentStatus,
-              totalAmount: item._sum.totalAmount || 0,
-              totalOrders: item._count.id || 0,
-              paid: item.paymentStatus === 'paid' ? item._count.id : 0,
-              pending: item.paymentStatus === 'pending' ? item._count.id : 0,
-              failed: item.paymentStatus === 'failed' ? item._count.id : 0,
-            });
-          }
-        });
-      }
-
-      if (summary.paymentBreakdown?.online) {
-        summary.paymentBreakdown.online.forEach((item: any) => {
-          const existing = paymentMethods.find(p => p.method === item.paymentStatus);
-          if (existing) {
-            existing.totalAmount += item._sum.totalAmount || 0;
-            existing.totalOrders += item._count.id || 0;
-            if (item.paymentStatus === 'paid') existing.paid += item._count.id;
-            if (item.paymentStatus === 'pending') existing.pending += item._count.id;
-            if (item.paymentStatus === 'failed') existing.failed += item._count.id;
-          } else {
-            paymentMethods.push({
-              method: item.paymentStatus,
-              totalAmount: item._sum.totalAmount || 0,
-              totalOrders: item._count.id || 0,
-              paid: item.paymentStatus === 'paid' ? item._count.id : 0,
-              pending: item.paymentStatus === 'pending' ? item._count.id : 0,
-              failed: item.paymentStatus === 'failed' ? item._count.id : 0,
-            });
-          }
-        });
-      }
+      const paymentMethods = Array.from(paymentMethodMap.values());
       
-      // Calculate payment split
+      // Calculate payment split (COD vs Prepaid)
       const codMethods = paymentMethods.filter((p) => 
-        p.method === 'cash' || p.method === 'cod'
+        p.method.toLowerCase() === 'cash' || p.method.toLowerCase() === 'cod'
       );
       const prepaidMethods = paymentMethods.filter((p) => 
-        p.method !== 'cash' && p.method !== 'cod'
+        p.method.toLowerCase() !== 'cash' && p.method.toLowerCase() !== 'cod'
       );
       
       const totalOrders = paymentMethods.reduce((sum, p) => sum + p.totalOrders, 0);
       const codOrders = codMethods.reduce((sum, p) => sum + p.totalOrders, 0);
       const prepaidOrders = prepaidMethods.reduce((sum, p) => sum + p.totalOrders, 0);
       
-      // Calculate pending COD (orders with COD payment method and pending status)
+      // Calculate pending COD amount
       const pendingCOD = codMethods.reduce((sum, p) => {
-        const pendingAmount = (p.totalAmount / p.totalOrders) * p.pending;
-        return sum + (isNaN(pendingAmount) ? 0 : pendingAmount);
+        if (p.pending > 0 && p.totalOrders > 0) {
+          const avgAmount = p.totalAmount / p.totalOrders;
+          return sum + (avgAmount * p.pending);
+        }
+        return sum;
       }, 0);
       
-      // Calculate failed payments
-      const failedPayments = paymentMethods.reduce((sum, p) => sum + (p.failed || 0), 0);
+      // Calculate failed payments count
+      const failedPayments = paymentMethods.reduce((sum, p) => sum + p.failed, 0);
       
       console.log('Payment Finance Data:', {
+        salesCount: sales.length,
         monthlyDataCount: monthlyData.length,
         paymentMethodsCount: paymentMethods.length,
         pendingCOD,
-        failedPayments
+        failedPayments,
+        totalOrders,
+        codOrders,
+        prepaidOrders
       });
       
       return {
@@ -588,7 +580,7 @@ export const dashboardService = {
   // SECTION 6: WAREHOUSE & STOCK ALERTS
   // ============================================
   
-  async getWarehouseAlerts(startDate?: string, endDate?: string) {
+  async getWarehouseAlerts() {
     try {
       // Get stock availability data (no date filter needed - current stock status)
       const stockResponse = await axiosInstance.get('/api/inventory/reports/stock-availability');
@@ -623,7 +615,7 @@ export const dashboardService = {
   // SECTION 7: EOD CLOSING
   // ============================================
   
-  async getEODClosing(startDate?: string, endDate?: string) {
+  async getEODClosing(endDate?: string) {
     try {
       const today = new Date().toISOString().split('T')[0];
       const eodResponse = await axiosInstance.get('/api/inventory/reports/eod-closing-stock', {
@@ -679,8 +671,8 @@ export const dashboardService = {
         this.getDailyInsights(startDate, endDate),
         this.getDeliveryPerformance(),
         this.getPaymentFinance(startDate, endDate),
-        this.getWarehouseAlerts(startDate, endDate),
-        this.getEODClosing(startDate, endDate)
+        this.getWarehouseAlerts(),
+        this.getEODClosing(endDate)
       ]);
 
       return {
@@ -705,3 +697,4 @@ export const dashboardService = {
     }
   }
 };
+

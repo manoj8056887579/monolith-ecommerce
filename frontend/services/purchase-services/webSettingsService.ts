@@ -13,16 +13,16 @@ export interface WebSettingsResponse {
 }
 
 /**
- * Get web settings (logo and favicon) from purchase-service
+ * Get web settings (logo and favicon) from backend
  */
 export const getPurchaseWebSettings = async (): Promise<WebSettingsResponse> => {
   try {
     const response = await axiosInstance.get<WebSettingsResponse>(
-      "/api/purchase/web-settings"
+      "/api/web/web-settings"
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching purchase web settings:", error);
+    console.error("Error fetching web settings:", error);
     // Return default values on error
     return {
       success: false,

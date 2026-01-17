@@ -72,7 +72,7 @@ export const expenseService = {
   getNextExpenseNumber: async (): Promise<string> => {
     const response = await axiosInstance.get<
       ApiResponse<{ expenseNumber: string }>
-    >("/api/purchase/expenses/next-expense-number");
+    >("/api/purchase/expenses/next-number");
     return response.data.data.expenseNumber;
   },
 

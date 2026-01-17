@@ -1,17 +1,38 @@
+const { prisma } = require("../../config/database");
+const { getPresignedUrl } = require("../web/uploadsS3");
+
+/**
+ * Fetch company logo from web settings
+ */
+async function getCompanyLogo() {
+  try {
+    const webSettings = await prisma.webSettings.findFirst();
+    if (webSettings && webSettings.logoUrl) {
+      return await getPresignedUrl(webSettings.logoUrl);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching company logo:", error);
+    return null;
+  }
+}
+
 /**
  * Welcome Email Template
  * Sent after user email verification
  */
-const getWelcomeEmailTemplate = (data) => {
+const getWelcomeEmailTemplate = async (data) => {
   const { email } = data;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const logoUrl = await getCompanyLogo();
 
   return {
     subject: "Welcome to Employee Management System!",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; padding: 20px;">
         <div style="background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <div style="text-align: center; margin-bottom: 30px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+            ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo" style="max-width: 180px; max-height: 80px;" />` : '<div></div>'}
             <h1 style="color: #1f2937; margin: 0; font-size: 28px;">Welcome! 🎉</h1>
           </div>
           

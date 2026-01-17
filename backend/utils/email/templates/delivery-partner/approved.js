@@ -1,10 +1,30 @@
+const { prisma } = require("../../../../config/database");
+const { getPresignedUrl } = require("../../../web/uploadsS3");
+
+/**
+ * Fetch company logo from web settings
+ */
+async function getCompanyLogo() {
+  try {
+    const webSettings = await prisma.webSettings.findFirst();
+    if (webSettings && webSettings.logoUrl) {
+      return await getPresignedUrl(webSettings.logoUrl);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching company logo:", error);
+    return null;
+  }
+}
+
 /**
  * Delivery Partner Approval Email Template
  */
-function getApprovedEmailTemplate({ name, email, partnerId, password, verificationToken }) {
+async function getApprovedEmailTemplate({ name, email, partnerId, password, verificationToken }) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  const verificationLink = `${frontendUrl}/partner/verify-email?token=${verificationToken}`;
+  const verificationLink = `${frontendUrl}/verify-partner?token=${verificationToken}`;
   const loginLink = `${frontendUrl}/partner/login`;
+  const logoUrl = await getCompanyLogo();
 
   return {
     subject: "Welcome to Our Delivery Partner Network! 🎉",
@@ -29,12 +49,29 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
             padding: 30px; 
-            text-align: center; 
-            border-radius: 10px 10px 0 0; 
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .header-left {
+            flex: 0 0 auto;
+          }
+          .header-logo {
+            max-width: 180px;
+            max-height: 80px;
+          }
+          .header-right {
+            flex: 1;
+            text-align: right;
           }
           .header h1 {
             margin: 0 0 10px 0;
             font-size: 28px;
+          }
+          .header p {
+            margin: 0;
+            font-size: 16px;
           }
           .content { 
             background: #f9f9f9; 
@@ -51,6 +88,9 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
           .credentials h3 {
             margin-top: 0;
             color: #667eea;
+          }
+          .credentials p {
+            margin: 10px 0;
           }
           .credentials code {
             background: #f0f0f0; 
@@ -69,9 +109,18 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
             margin: 10px 5px;
             font-weight: bold;
           }
+          .button:hover { 
+            background: #764ba2; 
+          }
           .button-container {
             text-align: center;
             margin: 30px 0;
+          }
+          .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            color: #666; 
+            font-size: 12px; 
           }
           .warning { 
             background: #fff3cd; 
@@ -79,6 +128,9 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
             padding: 15px; 
             margin: 20px 0; 
             border-radius: 5px;
+          }
+          .warning strong {
+            color: #856404;
           }
           .steps {
             background: white;
@@ -90,25 +142,31 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
             color: #667eea;
             margin-top: 0;
           }
-          .footer { 
-            text-align: center; 
-            margin-top: 30px; 
-            color: #666; 
-            font-size: 12px; 
+          .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .steps li {
+            margin: 8px 0;
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Welcome Aboard!</h1>
-            <p>Your Delivery Partner Application Has Been Approved</p>
+            <div class="header-left">
+              ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo" class="header-logo" />` : ''}
+            </div>
+            <div class="header-right">
+              <h1>🎉 Welcome Aboard!</h1>
+              <p>Application Approved</p>
+            </div>
           </div>
           
           <div class="content">
             <p>Dear <strong>${name}</strong>,</p>
             
-            <p>Congratulations! Your application to join our delivery partner network has been <strong>approved</strong>!</p>
+            <p>Congratulations! We're excited to inform you that your application to join our delivery partner network has been <strong>approved</strong>!</p>
             
             <div class="credentials">
               <h3>Your Account Details:</h3>
@@ -118,25 +176,28 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
             </div>
             
             <div class="warning">
-              <strong>⚠️ Important:</strong> Please verify your email address first before logging in. After verification, change your password for security.
+              <strong>⚠️ Important:</strong> Please verify your email address and change your password on first login for security purposes.
             </div>
             
             <div class="button-container">
               <a href="${verificationLink}" class="button">Verify Email Address</a>
+              <a href="${loginLink}" class="button">Login to Dashboard</a>
             </div>
             
             <div class="steps">
               <h3>Next Steps:</h3>
               <ol>
                 <li>Click the "Verify Email Address" button above</li>
-                <li>After verification, login to your partner dashboard at: <a href="${loginLink}">${loginLink}</a></li>
+                <li>Login to your partner dashboard</li>
                 <li>Change your temporary password</li>
                 <li>Complete your profile setup</li>
                 <li>Start accepting delivery requests!</li>
               </ol>
             </div>
             
-            <p>If you have any questions, please contact our support team.</p>
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+            
+            <p>We look forward to working with you!</p>
             
             <p>Best regards,<br>
             <strong>The Delivery Team</strong></p>
@@ -144,6 +205,7 @@ function getApprovedEmailTemplate({ name, email, partnerId, password, verificati
           
           <div class="footer">
             <p>This is an automated email. Please do not reply to this message.</p>
+            <p>If you didn't apply to become a delivery partner, please contact us immediately.</p>
           </div>
         </div>
       </body>

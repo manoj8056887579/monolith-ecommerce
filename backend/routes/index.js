@@ -1,21 +1,42 @@
 const express = require('express');
+
+// Auth routes
 const authRoutes = require('./auth/authRoutes');
+
+// Email routes
 const emailConfigRoutes = require('./email/emailConfigRoutes');
+
+// Web settings routes
 const webSettingsRoutes = require('./web/webSettingsRoutes');
 const bannerRoutes = require('./web/bannerRoutes');
 const companyRoutes = require('./web/companyRoutes');
 const seoRoutes = require('./web/seoRoutes');
 const policyRoutes = require('./web/policyRoutes');
+
+// Finance routes
 const gstRateRoutes = require('./finance/gstRateRoutes');
 const invoiceSettingsRoutes = require('./finance/invoiceSettingsRoutes');
+const salesRoutes = require('./finance/salesRoutes');
+const transactionRoutes = require('./finance/transactionRoutes');
+const salesReportRoutes = require('./finance/salesReportRoutes');
+
+// Payment Gateway routes
 const paymentGatewayRoutes = require('./payment-gateway/paymentGatewayRoutes');
+
+// Customer routes
 const customerRoutes = require('./customer/customerRoutes');
+
+// Delivery routes
 const deliveryPartnerRoutes = require('./delivery/deliveryPartnerRoutes');
+
+// Inventory routes
 const categoryRoutes = require('./inventory/categoryRoutes');
 const itemRoutes = require('./inventory/itemRoutes');
 const warehouseRoutes = require('./inventory/warehouseRoutes');
 const stockAdjustmentRoutes = require('./inventory/stockAdjustmentRoutes');
 const inventoryReportRoutes = require('./inventory/reportRoutes');
+
+// Online service routes
 const categorySubcategoryRoutes = require('./online/categorySubcategoryRoutes');
 const frontendRoutes = require('./online/frontendRoutes');
 const onlineProductRoutes = require('./online/onlineProductRoutes');
@@ -28,11 +49,25 @@ const couponRoutes = require('./online/couponRoutes');
 const cartRoutes = require('./online/cartRoutes');
 const wishlistRoutes = require('./online/wishlistRoutes');
 const addressRoutes = require('./online/addressRoutes');
+
+// Order routes
 const orderRoutes = require('./order/orderRoutes');
 const myOrdersRoutes = require('./order/myOrdersRoutes');
 const adminOrderRoutes = require('./order/adminOrderRoutes');
+
+// POS routes
 const posProductRoutes = require('./pos/posProductRoutes');
 const posBarcodeRoutes = require('./pos/posBarcodeRoutes');
+const posOrderRoutes = require('./pos/posOrderRoutes');
+const posInvoiceRoutes = require('./pos/posInvoiceRoutes');
+
+// Purchase routes
+const supplierRoutes = require('./purchase/supplierRoutes');
+const purchaseOrderRoutes = require('./purchase/purchaseOrderRoutes');
+const billRoutes = require('./purchase/billRoutes');
+const expenseCategoryRoutes = require('./purchase/expenseCategoryRoutes');
+const expenseRoutes = require('./purchase/expenseRoutes');
+const purchaseReportRoutes = require('./purchase/reportRoutes');
 
 const router = express.Router();
 
@@ -74,11 +109,8 @@ router.use('/web/policies', policyRoutes);
 // Finance routes
 router.use('/finance/gst-rates', gstRateRoutes);
 router.use('/finance/invoice-settings', invoiceSettingsRoutes);
-const salesRoutes = require('./finance/salesRoutes');
 router.use('/finance/sales', salesRoutes);
-const transactionRoutes = require('./finance/transactionRoutes');
 router.use('/finance/transactions', transactionRoutes);
-const salesReportRoutes = require('./finance/salesReportRoutes');
 router.use('/finance/reports', salesReportRoutes);
 
 // Payment Gateway routes
@@ -115,11 +147,17 @@ router.use('/online/my-orders', myOrdersRoutes); // Customer order history
 router.use('/online/admin/orders', adminOrderRoutes); // Admin order management
 
 // POS routes
-router.use('/pos/products', posProductRoutes); // POS product management
-router.use('/pos/barcodes', posBarcodeRoutes); // POS barcode generation
-const posOrderRoutes = require('./pos/posOrderRoutes');
-router.use('/pos/orders', posOrderRoutes); // POS order management
-const posInvoiceRoutes = require('./pos/posInvoiceRoutes');
-router.use('/pos/invoices', posInvoiceRoutes); // POS invoice management
+router.use('/pos/products', posProductRoutes);
+router.use('/pos/barcodes', posBarcodeRoutes);
+router.use('/pos/orders', posOrderRoutes);
+router.use('/pos/invoices', posInvoiceRoutes);
+
+// Purchase routes
+router.use('/purchase/suppliers', supplierRoutes);
+router.use('/purchase/purchase-orders', purchaseOrderRoutes);
+router.use('/purchase/bills', billRoutes);
+router.use('/purchase/expense-categories', expenseCategoryRoutes);
+router.use('/purchase/expenses', expenseRoutes);
+router.use('/purchase/reports', purchaseReportRoutes);
 
 module.exports = router;

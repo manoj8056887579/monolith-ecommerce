@@ -145,7 +145,7 @@ export const warehouseService = {
   getAll: async (status?: string): Promise<Warehouse[]> => {
     const params = status ? { status } : {};
     const response = await axiosInstance.get<ApiResponse<Warehouse[]>>(
-      "/api/purchase/warehouses",
+      "/api/inventory/warehouses",
       { params }
     );
     return response.data.data;
@@ -154,14 +154,14 @@ export const warehouseService = {
   // Get warehouse by ID
   getById: async (id: string): Promise<Warehouse> => {
     const response = await axiosInstance.get<ApiResponse<Warehouse>>(
-      `/api/purchase/warehouses/${id}`
+      `/api/inventory/warehouses/${id}`
     );
     return response.data.data;
   },
 
   // Get warehouse statistics
   getStats: async () => {
-    const response = await axiosInstance.get("/api/purchase/warehouses/stats");
+    const response = await axiosInstance.get("/api/inventory/warehouses/stats");
     return response.data.data;
   },
 };
@@ -172,7 +172,7 @@ export const categoryService = {
   getAll: async (isActive?: boolean): Promise<Category[]> => {
     const params = isActive !== undefined ? { isActive } : {};
     const response = await axiosInstance.get<ApiResponse<Category[]>>(
-      "/api/purchase/categories",
+      "/api/inventory/categories",
       { params }
     );
     return response.data.data;
@@ -181,7 +181,8 @@ export const categoryService = {
   // Get active categories only
   getActive: async (): Promise<Category[]> => {
     const response = await axiosInstance.get<ApiResponse<Category[]>>(
-      "/api/purchase/categories/active"
+      "/api/inventory/categories",
+      { params: { isActive: true } }
     );
     return response.data.data;
   },
@@ -189,14 +190,14 @@ export const categoryService = {
   // Get category by ID
   getById: async (id: string): Promise<Category> => {
     const response = await axiosInstance.get<ApiResponse<Category>>(
-      `/api/purchase/categories/${id}`
+      `/api/inventory/categories/${id}`
     );
     return response.data.data;
   },
 
   // Get category statistics
   getStats: async () => {
-    const response = await axiosInstance.get("/api/purchase/categories/stats");
+    const response = await axiosInstance.get("/api/inventory/categories/stats");
     return response.data.data;
   },
 };
@@ -211,7 +212,7 @@ export const itemService = {
     search?: string;
   }): Promise<Item[]> => {
     const response = await axiosInstance.get<ApiResponse<Item[]>>(
-      "/api/purchase/items",
+      "/api/inventory/items",
       { params: filters }
     );
     return response.data.data;
@@ -220,7 +221,7 @@ export const itemService = {
   // Search items
   search: async (query: string): Promise<Item[]> => {
     const response = await axiosInstance.get<ApiResponse<Item[]>>(
-      "/api/purchase/items/search",
+      "/api/inventory/items/search",
       { params: { q: query } }
     );
     return response.data.data;
@@ -229,7 +230,7 @@ export const itemService = {
   // Get low stock items
   getLowStock: async (): Promise<Item[]> => {
     const response = await axiosInstance.get<ApiResponse<Item[]>>(
-      "/api/purchase/items/low-stock"
+      "/api/inventory/items/low-stock"
     );
     return response.data.data;
   },
@@ -237,7 +238,7 @@ export const itemService = {
   // Get item by ID
   getById: async (id: string): Promise<Item> => {
     const response = await axiosInstance.get<ApiResponse<Item>>(
-      `/api/purchase/items/${id}`
+      `/api/inventory/items/${id}`
     );
     return response.data.data;
   },
@@ -245,7 +246,7 @@ export const itemService = {
   // Get items by category
   getByCategory: async (category: string): Promise<Item[]> => {
     const response = await axiosInstance.get<ApiResponse<Item[]>>(
-      `/api/purchase/items/category/${category}`
+      `/api/inventory/items/category/${category}`
     );
     return response.data.data;
   },
@@ -253,14 +254,14 @@ export const itemService = {
   // Get items by warehouse
   getByWarehouse: async (warehouse: string): Promise<Item[]> => {
     const response = await axiosInstance.get<ApiResponse<Item[]>>(
-      `/api/purchase/items/warehouse/${warehouse}`
+      `/api/inventory/items/warehouse/${warehouse}`
     );
     return response.data.data;
   },
 
   // Get item statistics
   getStats: async () => {
-    const response = await axiosInstance.get("/api/purchase/items/stats");
+    const response = await axiosInstance.get("/api/inventory/items/stats");
     return response.data.data;
   },
 };
@@ -389,10 +390,20 @@ export const purchaseOrderService = {
     warehouseId?: string;
     startDate?: string;
     endDate?: string;
+    availableForBill?: boolean;
   }): Promise<PurchaseOrder[]> => {
     const response = await axiosInstance.get<ApiResponse<PurchaseOrder[]>>(
       "/api/purchase/purchase-orders",
       { params: filters }
+    );
+    return response.data.data;
+  },
+
+  // Get purchase orders available for bill creation (no existing bills)
+  getAvailableForBill: async (): Promise<PurchaseOrder[]> => {
+    const response = await axiosInstance.get<ApiResponse<PurchaseOrder[]>>(
+      "/api/purchase/purchase-orders",
+      { params: { availableForBill: true } }
     );
     return response.data.data;
   },
@@ -408,7 +419,7 @@ export const purchaseOrderService = {
   // Get next PO number
   getNextPONumber: async (): Promise<string> => {
     const response = await axiosInstance.get<ApiResponse<{ poId: string }>>(
-      "/api/purchase/purchase-orders/next-po-number"
+      "/api/purchase/purchase-orders/next-number"
     );
     return response.data.data.poId;
   },
@@ -473,7 +484,7 @@ export const gstRateService = {
   getAll: async (isActive?: boolean): Promise<GSTRate[]> => {
     const params = isActive !== undefined ? { isActive } : {};
     const response = await axiosInstance.get<ApiResponse<GSTRate[]>>(
-      "/api/purchase/gst-rates",
+      "/api/finance/gst-rates",
       { params }
     );
     return response.data.data;
@@ -482,7 +493,7 @@ export const gstRateService = {
   // Get active GST rates only
   getActive: async (): Promise<GSTRate[]> => {
     const response = await axiosInstance.get<ApiResponse<GSTRate[]>>(
-      "/api/purchase/gst-rates",
+      "/api/finance/gst-rates",
       { params: { isActive: true } }
     );
     return response.data.data;

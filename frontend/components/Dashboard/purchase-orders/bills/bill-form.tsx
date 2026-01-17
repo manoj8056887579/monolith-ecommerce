@@ -263,7 +263,7 @@ export default function BillForm({
           warehouseService.getAll("active"),
           categoryService.getActive(),
           itemService.getAll(),
-          purchaseOrderService.getAll(),
+          purchaseOrderService.getAvailableForBill(), // Only get POs without bills
           authService.getCurrentAdmin(),
           gstRateService.getActive(),
         ]);
