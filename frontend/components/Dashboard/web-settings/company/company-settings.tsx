@@ -22,7 +22,7 @@ interface CompanyInfo {
   zipCode: string;
   country: string;
   website: string;
- 
+  mapIframe: string;
   socialMedia: {
     facebook: string;
     twitter: string;
@@ -47,7 +47,7 @@ export const CompanySettings = () => {
     zipCode: "",
     country: "",
     website: "",
-  
+    mapIframe: "",
     socialMedia: {
       facebook: "",
       twitter: "",
@@ -274,6 +274,19 @@ export const CompanySettings = () => {
                 placeholder="Country"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Google Maps Iframe Embed Code</Label>
+            <Textarea
+              value={companyInfo.mapIframe}
+              onChange={(e) => handleChange("mapIframe", e.target.value)}
+              placeholder='<iframe src="https://www.google.com/maps/embed?pb=..." width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy"></iframe>'
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste the complete iframe embed code from Google Maps. This will be displayed on the contact page.
+            </p>
           </div>
         </CardContent>
       </Card>

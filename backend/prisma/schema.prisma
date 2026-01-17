@@ -1449,6 +1449,9 @@ model CompanySettings {
   // Social Media
   socialMedia Json @default("{\"facebook\":\"\",\"twitter\":\"\",\"instagram\":\"\",\"linkedin\":\"\",\"youtube\":\"\"}")
 
+  // Map Integration
+  mapIframe String @default("") // Google Maps iframe embed code
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

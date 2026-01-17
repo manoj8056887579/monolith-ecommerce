@@ -5,41 +5,66 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import {
   IconBrandFacebook,
-  IconBrandTwitter,
+  IconBrandX,
   IconBrandInstagram,
   IconBrandYoutube,
+  IconBrandLinkedin,
 } from "@tabler/icons-react";
 import {
   getWebSettings,
+  getCompanySettings,
   type WebSettings,
+  type CompanySettings,
 } from "@/services/online-services/webSettingsService";
 
 export default function Footer01() {
   const [webSettings, setWebSettings] = useState<WebSettings | null>(null);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const webSettingsCacheRef = useRef<WebSettings | null>(null);
+  const companySettingsCacheRef = useRef<CompanySettings | null>(null);
 
-  // Fetch web settings on mount with caching
+  // Fetch web settings and company settings on mount with caching
   useEffect(() => {
-    const fetchWebSettings = async () => {
+    const fetchSettings = async () => {
       try {
         // Check cache first
         if (webSettingsCacheRef.current) {
           setWebSettings(webSettingsCacheRef.current);
         } else {
-          // Fetch web settings only if not cached
           const settingsResponse = await getWebSettings();
           if (settingsResponse.success) {
             setWebSettings(settingsResponse.data);
-            webSettingsCacheRef.current = settingsResponse.data; // Cache the settings
+            webSettingsCacheRef.current = settingsResponse.data;
+          }
+        }
+
+        // Fetch company settings
+        if (companySettingsCacheRef.current) {
+          setCompanySettings(companySettingsCacheRef.current);
+        } else {
+          const companyResponse = await getCompanySettings();
+          if (companyResponse.success) {
+            setCompanySettings(companyResponse.data);
+            companySettingsCacheRef.current = companyResponse.data;
           }
         }
       } catch (err) {
-        console.error("Error fetching web settings:", err);
+        console.error("Error fetching settings:", err);
       }
     };
 
-    fetchWebSettings();
+    fetchSettings();
   }, []);
+
+  // Helper to check if social media link exists
+  const hasSocialMedia = companySettings?.socialMedia && (
+    companySettings.socialMedia.facebook ||
+    companySettings.socialMedia.twitter ||
+    companySettings.socialMedia.instagram ||
+    companySettings.socialMedia.youtube ||
+    companySettings.socialMedia.linkedin
+  );
+
   return (
     <footer className="bg-gray-900 text-gray-300 pt-8 sm:pt-12 pb-4 sm:pb-6">
       <div className="container mx-auto px-3 sm:px-4">
@@ -58,53 +83,82 @@ export default function Footer01() {
                 />
               ) : (
                 <span className="text-white font-bold text-2xl sm:text-3xl">
-                  LEATS
+                  {companySettings?.companyName || "LEATS"}
                 </span>
               )}
             </Link>
             <p className="text-xs sm:text-sm mb-3 sm:mb-4 text-gray-400">
-              Your one-stop shop for fresh groceries, daily essentials, and
-              household items. We deliver quality products at the best prices,
-              right to your doorstep.
+              {companySettings?.description || "Your one-stop shop for fresh groceries, daily essentials, and household items. We deliver quality products at the best prices, right to your doorstep."}
             </p>
-            <div className="flex gap-2 sm:gap-3">
-              <a
-                href="#"
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
-              >
-                <IconBrandFacebook
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
-              >
-                <IconBrandTwitter
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
-              >
-                <IconBrandInstagram
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
-              >
-                <IconBrandYoutube
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                />
-              </a>
-            </div>
+            {hasSocialMedia && (
+              <div className="flex gap-2 sm:gap-3">
+                {companySettings?.socialMedia.facebook && (
+                  <a
+                    href={companySettings.socialMedia.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
+                  >
+                    <IconBrandFacebook
+                      size={16}
+                      className="sm:w-[18px] sm:h-[18px]"
+                    />
+                  </a>
+                )}
+                {companySettings?.socialMedia.twitter && (
+                  <a
+                    href={companySettings.socialMedia.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
+                  >
+                    <IconBrandX
+                      size={16}
+                      className="sm:w-[18px] sm:h-[18px]"
+                    />
+                  </a>
+                )}
+                {companySettings?.socialMedia.instagram && (
+                  <a
+                    href={companySettings.socialMedia.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
+                  >
+                    <IconBrandInstagram
+                      size={16}
+                      className="sm:w-[18px] sm:h-[18px]"
+                    />
+                  </a>
+                )}
+                {companySettings?.socialMedia.youtube && (
+                  <a
+                    href={companySettings.socialMedia.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
+                  >
+                    <IconBrandYoutube
+                      size={16}
+                      className="sm:w-[18px] sm:h-[18px]"
+                    />
+                  </a>
+                )}
+                {companySettings?.socialMedia.linkedin && (
+                  <a
+                    href={companySettings.socialMedia.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#e63946] transition-colors active:scale-95"
+                  >
+                    <IconBrandLinkedin
+                      size={16}
+                      className="sm:w-[18px] sm:h-[18px]"
+                    />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}
@@ -195,18 +249,29 @@ export default function Footer01() {
               Contact Us
             </h4>
             <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-              <li className="flex items-start gap-2">
-                <span>📍</span>
-                <span>123 Main Street, Mumbai, Maharashtra 400001</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span>📞</span>
-                <span>1800-123-4567</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span>✉️</span>
-                <span>support@leats.com</span>
-              </li>
+              {companySettings?.address && (
+                <li className="flex items-start gap-2">
+                  <span>📍</span>
+                  <span>
+                    {companySettings.address}
+                    {companySettings.city && `, ${companySettings.city}`}
+                    {companySettings.state && `, ${companySettings.state}`}
+                    {companySettings.zipCode && ` ${companySettings.zipCode}`}
+                  </span>
+                </li>
+              )}
+              {companySettings?.phone && (
+                <li className="flex items-center gap-2">
+                  <span>📞</span>
+                  <span>{companySettings.phone}</span>
+                </li>
+              )}
+              {companySettings?.email && (
+                <li className="flex items-center gap-2">
+                  <span>✉️</span>
+                  <span>{companySettings.email}</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
