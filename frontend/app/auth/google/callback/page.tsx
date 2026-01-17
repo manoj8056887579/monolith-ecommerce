@@ -80,6 +80,11 @@ function GoogleCallbackContent() {
           localStorage.setItem("token", authData.data.token);
           localStorage.setItem("user", JSON.stringify(authData.data.user));
 
+          // Trigger auth refresh event to update AuthProvider immediately
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth-refresh'));
+          }
+
           // Redirect based on role
           const user = authData.data.user;
           if (user.role === 'admin') {
