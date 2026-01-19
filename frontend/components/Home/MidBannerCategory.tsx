@@ -14,7 +14,7 @@ export default function MidBannerCategory() {
       bgColor: "bg-rose-50/60",
       image:
         "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=250&fit=crop",
-      link: "/category/fruits-vegetables",
+      link: "/products",
     },
     {
       title: "Kitchen Essentials",
@@ -23,7 +23,7 @@ export default function MidBannerCategory() {
       bgColor: "bg-amber-50/60",
       image:
         "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=250&fit=crop",
-      link: "/category/oil-ghee-masala",
+      link: "/products",
     },
     {
       title: "Personal Care",
@@ -32,7 +32,7 @@ export default function MidBannerCategory() {
       bgColor: "bg-blue-50/60",
       image:
         "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?w=400&h=250&fit=crop",
-      link: "/category/personal-care",
+      link: "/products",
     },
   ];
 
