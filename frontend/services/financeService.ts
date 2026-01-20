@@ -7,6 +7,7 @@ export interface SalesItem {
   inventoryProductId?: string;
   productName: string;
   variantName?: string;
+  displayName?: string;
   brand?: string;
   productImage?: string;
   selectedCuttingStyle?: string;
@@ -15,9 +16,19 @@ export interface SalesItem {
   quantity: number;
   discount: number;
   subtotal: number;
+  itemTotal?: number;
   totalAmount: number;
+  total?: number;
+  totalPrice?: number;
   gstPercentage: number;
   gstAmount: number;
+  totalGstAmount?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  cgstPercentage?: number;
+  sgstPercentage?: number;
+  igstPercentage?: number;
   priceBeforeGst: number;
   revenueAmount: number;
 }
@@ -94,17 +105,35 @@ export interface SalesOrder {
   deliveryAddress?: {
     name?: string;
     phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    landmark?: string;
     city?: string;
     state?: string;
     pincode?: string;
+    country?: string;
   };
   subtotal: number;
   tax: number; // Changed from taxAmount
   taxRate: number;
   discount: number;
+  // POS-specific fields
+  roundingOff?: number;
+  amountReceived?: number;
+  changeGiven?: number;
+  createdBy?: string;
+  // Online-specific fields
   couponCode?: string;
   couponDiscount?: number;
   shippingCharge?: number;
+  // GST Breakdown
+  gstType?: string;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  totalGstAmount?: number;
+  adminState?: string;
+  customerState?: string;
   total: number; // Changed from totalAmount
   paymentMethod: string;
   paymentStatus: 'paid' | 'pending' | 'failed' | 'completed';
@@ -162,6 +191,14 @@ export interface FinancialYearData {
 
 export interface OrderDetails extends SalesOrder {
   items: SalesItem[];
+  // GST Breakdown fields
+  gstType?: string;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  totalGstAmount?: number;
+  adminState?: string;
+  customerState?: string;
 }
 
 class FinanceService {

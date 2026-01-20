@@ -293,8 +293,6 @@ export function POSInvoiceView({ order, companySettings, isOpen, onClose }: POSI
           <!-- Footer -->
           <div class="footer">
             <p style="font-weight: bold; margin: 3px 0;">Thank you for your purchase!</p>
-            <p style="margin: 3px 0;">${companySettings?.companyName || 'STORE NAME'}</p>
-            <p style="margin: 3px 0;">Powered by POS System</p>
           </div>
         </body>
       </html>
@@ -746,8 +744,6 @@ export function POSInvoiceView({ order, companySettings, isOpen, onClose }: POSI
               {/* Footer */}
               <div className="text-center mt-4 pt-3 border-t-2 border-dashed border-gray-800">
                 <p className="text-xs font-bold mb-1">Thank you for your purchase!</p>
-                <p className="text-xs">{companySettings?.companyName || 'STORE NAME'}</p>
-                <p className="text-xs mt-2">Powered by POS System</p>
               </div>
             </div>
           </div>
