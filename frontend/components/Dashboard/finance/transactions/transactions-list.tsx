@@ -47,6 +47,7 @@ export function TransactionsList({ transactionType }: TransactionsListProps) {
   const [search, setSearch] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [financialYearFilter, setFinancialYearFilter] = useState("all");
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 0,
@@ -54,6 +55,23 @@ export function TransactionsList({ transactionType }: TransactionsListProps) {
   });
 
   const currencySymbol = useCurrency();
+
+  // Fetch available financial years
+  const fetchAvailableYears = async () => {
+    try {
+      const response = await financeService.getSalesByFinancialYear();
+      if (response.success && response.data.length > 0) {
+        const years = response.data.map((item) => item.financialYear).filter(Boolean);
+        setAvailableYears(years);
+      }
+    } catch (error) {
+      console.error("Error fetching financial years:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableYears();
+  }, []);
 
   const fetchTransactions = async () => {
     try {
@@ -160,9 +178,11 @@ export function TransactionsList({ transactionType }: TransactionsListProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Years</SelectItem>
-                <SelectItem value="2025-26">2025-26</SelectItem>
-                <SelectItem value="2024-25">2024-25</SelectItem>
-                <SelectItem value="2023-24">2023-24</SelectItem>
+                {availableYears.map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -277,7 +297,7 @@ export function TransactionsList({ transactionType }: TransactionsListProps) {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -285,7 +305,7 @@ export function TransactionsList({ transactionType }: TransactionsListProps) {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>
