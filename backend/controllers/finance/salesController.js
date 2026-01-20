@@ -379,8 +379,145 @@ const getSalesByFinancialYear = async (req, res) => {
   }
 };
 
+/**
+ * Get order details by ID and type
+ * GET /api/finance/sales/:type/:id
+ */
+const getOrderDetails = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+
+    if (!['pos', 'online'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid order type. Must be "pos" or "online"',
+      });
+    }
+
+    let order;
+    if (type === 'pos') {
+      order = await prisma.pOSOrder.findUnique({
+        where: { id },
+        include: {
+          items: true,
+        },
+      });
+    } else {
+      order = await prisma.onlineOrder.findUnique({
+        where: { id },
+      });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: `${type.toUpperCase()} order not found`,
+      });
+    }
+
+    // Transform to unified format with items
+    const items = Array.isArray(order.items) ? order.items : [];
+    
+    // Calculate total tax from items if order.tax is 0 (for POS orders)
+    let calculatedTax = order.tax || 0;
+    if (type === 'pos' && calculatedTax === 0 && items.length > 0) {
+      calculatedTax = items.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    }
+    
+    const transformedOrder = {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      invoiceNumber: order.invoiceNumber,
+      orderType: type,
+      source: type === 'pos' ? 'POS' : 'Online',
+      customerId: order.customerId,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      ...(type === 'online' && order.deliveryAddress && {
+        deliveryAddress: order.deliveryAddress,
+      }),
+      subtotal: order.subtotal,
+      tax: calculatedTax,
+      taxRate: order.taxRate,
+      discount: order.discount,
+      ...(type === 'pos' && {
+        roundingOff: order.roundingOff,
+        amountReceived: order.amountReceived,
+        changeGiven: order.changeGiven,
+        createdBy: order.createdBy,
+      }),
+      ...(type === 'online' && {
+        couponCode: order.couponCode,
+        couponDiscount: order.couponDiscount,
+        shippingCharge: order.shippingCharge,
+        gstType: order.gstType,
+        cgstAmount: order.cgstAmount,
+        sgstAmount: order.sgstAmount,
+        igstAmount: order.igstAmount,
+        totalGstAmount: order.totalGstAmount,
+      }),
+      total: order.total,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      paymentId: order.paymentId,
+      orderStatus: order.orderStatus,
+      accountingPeriod: order.accountingPeriod,
+      financialYear: order.financialYear,
+      saleDate: order.saleDate || order.createdAt,
+      createdAt: order.createdAt,
+      items: items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        inventoryProductId: item.inventoryProductId,
+        productName: item.productName,
+        variantName: item.variantName,
+        displayName: item.displayName,
+        brand: item.brand,
+        productImage: item.productImage,
+        selectedCuttingStyle: item.selectedCuttingStyle,
+        unitPrice: item.unitPrice || 0,
+        mrp: item.mrp || 0,
+        quantity: item.quantity || 0,
+        discount: item.discount || 0,
+        subtotal: item.subtotal || item.itemTotal || 0,
+        itemTotal: item.itemTotal || item.subtotal || 0,
+        totalAmount: item.totalAmount || item.total || item.totalPrice || 0,
+        total: item.total || item.totalAmount || item.totalPrice || 0,
+        totalPrice: item.totalPrice || item.total || item.totalAmount || 0,
+        gstPercentage: item.gstPercentage || 0,
+        gstAmount: item.gstAmount || item.totalGstAmount || 0,
+        totalGstAmount: item.totalGstAmount || item.gstAmount || 0,
+        cgstAmount: item.cgstAmount || 0,
+        sgstAmount: item.sgstAmount || 0,
+        igstAmount: item.igstAmount || 0,
+        cgstPercentage: item.cgstPercentage || 0,
+        sgstPercentage: item.sgstPercentage || 0,
+        igstPercentage: item.igstPercentage || 0,
+        priceBeforeGst: item.priceBeforeGst || item.itemTotal || item.unitPrice || 0,
+        revenueAmount: item.revenueAmount || item.total || 0,
+      })),
+      itemCount: items.length,
+      totalQuantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    };
+
+    res.json({
+      success: true,
+      data: transformedOrder,
+    });
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch order details',
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllSales,
   getSalesSummary,
   getSalesByFinancialYear,
+  getOrderDetails,
 };
