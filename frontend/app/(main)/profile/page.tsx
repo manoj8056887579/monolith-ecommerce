@@ -23,11 +23,11 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Profile</h1>
+          <h1 className="text-3xl font-bold">My Profile</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your account settings and preferences
+            Manage your account settings, preferences, and view your activity
           </p>
         </div>
         
