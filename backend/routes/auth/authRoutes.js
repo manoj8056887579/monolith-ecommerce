@@ -17,7 +17,8 @@ const {
   getAddresses,
   addAddress,
   updateAddress,
-  deleteAddress
+  deleteAddress,
+  getUserStats
 } = require('../../controllers/auth/authController');
 
 // Import partner auth controller
@@ -66,6 +67,7 @@ router.get('/google/failure', googleAuthFailure);
 
 // Protected routes
 router.get('/me', authenticateToken, getCurrentUser);
+router.get('/stats', authenticateToken, getUserStats);
 router.post('/logout', authenticateToken, logout);
 router.put('/profile', authenticateToken, updateProfile);
 

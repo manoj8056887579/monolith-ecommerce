@@ -547,6 +547,11 @@ export default function Header() {
                   ) : (
                     <>
                       <DropdownMenuItem asChild>
+                        <Link href="/profile" className="cursor-pointer">
+                          My Profile
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
                         <Link href="/my-orders" className="cursor-pointer">
                           My Orders
                         </Link>
@@ -869,6 +874,14 @@ export default function Header() {
                     </>
                   ) : (
                     <>
+                      <Link
+                        href="/profile"
+                        className="flex items-center gap-3 py-2.5 sm:py-3 text-gray-700 hover:bg-gray-50 rounded-lg px-2 -mx-2 text-sm sm:text-base"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <IconUser size={20} />
+                        <span>My Profile</span>
+                      </Link>
                       <Link
                         href="/my-orders"
                         className="flex items-center gap-3 py-2.5 sm:py-3 text-gray-700 hover:bg-gray-50 rounded-lg px-2 -mx-2 text-sm sm:text-base"
