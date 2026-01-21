@@ -27,7 +27,9 @@ const initializeFirebase = () => {
     return firebaseApp;
   } catch (error) {
     console.error('❌ Firebase Admin SDK initialization failed:', error.message);
-    throw error;
+    console.log('📱 Push notifications will not be available');
+    // Don't throw - allow server to continue without Firebase
+    return null;
   }
 };
 
@@ -46,6 +48,10 @@ const getFirebaseAdmin = () => {
  */
 const getMessaging = () => {
   const app = getFirebaseAdmin();
+  if (!app) {
+    console.warn('⚠️ Firebase not initialized, messaging unavailable');
+    return null;
+  }
   return admin.messaging(app);
 };
 
