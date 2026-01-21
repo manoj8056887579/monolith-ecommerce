@@ -221,17 +221,63 @@ export default function CheckoutPageClient() {
 
     try {
       setIsLoadingAddresses(true);
-      const response = await addressService.getAddresses(user.id);
-      setAddresses(response.data);
+      
+      // Fetch saved addresses and user profile in parallel
+      const [addressResponse, userResponse] = await Promise.all([
+        addressService.getAddresses(user.id),
+        axiosInstance.get('/api/auth/me')
+      ]);
+      
+      let allAddresses = [...addressResponse.data];
+      
+      // Add user profile address if it has complete address information
+      if (userResponse.data.success && userResponse.data.data) {
+        const userData = userResponse.data.data;
+        
+        // Check if user has complete address information
+        if (userData.address && userData.city && userData.state && userData.zipCode && userData.country) {
+          const profileAddress: Address = {
+            id: 'profile-address',
+            name: userData.name,
+            phone: userData.phoneNumber || '',
+            alternatePhone: '',
+            addressLine1: userData.address,
+            addressLine2: '',
+            landmark: '',
+            city: userData.city,
+            state: userData.state,
+            pincode: userData.zipCode,
+            country: userData.country,
+            addressType: 'home',
+            isDefault: false,
+            createdAt: userData.createdAt || new Date().toISOString(),
+            updatedAt: userData.updatedAt || new Date().toISOString(),
+          };
+          
+          // Check if this address already exists in saved addresses
+          const isDuplicate = addressResponse.data.some(addr => 
+            addr.addressLine1.toLowerCase().trim() === userData.address.toLowerCase().trim() &&
+            addr.city.toLowerCase().trim() === userData.city.toLowerCase().trim() &&
+            addr.pincode === userData.zipCode
+          );
+          
+          // Only add if it's not a duplicate
+          if (!isDuplicate) {
+            allAddresses.unshift(profileAddress); // Add at the beginning
+          }
+        }
+      }
+      
+      setAddresses(allAddresses);
       
       // Restore checkout state from sessionStorage
-      restoreCheckoutState(response.data);
+      restoreCheckoutState(allAddresses);
       
       // If no address was restored from session, auto-select default or first
       const savedAddressId = sessionStorage.getItem(CHECKOUT_STORAGE_KEYS.SELECTED_ADDRESS_ID);
       if (!savedAddressId) {
         const defaultAddr =
-          response.data.find((a) => a.isDefault) || response.data[0];
+          allAddresses.find((a) => a.isDefault) || allAddresses[0];
         if (defaultAddr) {
           setSelectedAddress(defaultAddr);
         }
@@ -239,15 +285,15 @@ export default function CheckoutPageClient() {
       
       // Validate step access after addresses are loaded
       // If user is on review/payment but has no address, redirect to address step
-      if (response.data.length === 0 && (currentStep === 'review' || currentStep === 'payment')) {
+      if (allAddresses.length === 0 && (currentStep === 'review' || currentStep === 'payment')) {
         setCurrentStep('address');
         updateUrlWithStep('address');
         toast.info('Please add a delivery address first');
       } else if (currentStep !== 'address') {
         // Validate that saved address still exists
         const savedAddress = savedAddressId 
-          ? response.data.find(a => a.id === savedAddressId)
-          : response.data.find(a => a.isDefault) || response.data[0];
+          ? allAddresses.find(a => a.id === savedAddressId)
+          : allAddresses.find(a => a.isDefault) || allAddresses[0];
           
         if (!savedAddress) {
           setCurrentStep('address');
