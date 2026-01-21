@@ -115,7 +115,14 @@ app.listen(PORT, async () => {
     // Auto-initialize admin user on first database connection
     console.log("👤 Initializing admin user...");
     const { initializeAdmin } = require("./utils/auth/initializeAdmin");
-    await initializeAdmin();
+    const initResult = await initializeAdmin();
+    
+    if (initResult.success) {
+      console.log("✅ Admin initialization completed successfully");
+    } else {
+      console.error("⚠️  Admin initialization failed:", initResult.message);
+      console.error("   Please check the logs above for details");
+    }
     
     console.log("═══════════════════════════════════════════════════");
     console.log("✅ Monolith E-Commerce Backend Started Successfully");
