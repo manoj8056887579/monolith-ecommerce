@@ -1101,6 +1101,63 @@ const updateProfile = async (req, res) => {
           createdAt: true,
         },
       });
+
+      // Sync profile information to Customer collection for regular users
+      try {
+        console.log("🔄 Syncing user profile to customer collection...");
+        
+        // Check if customer record exists
+        const existingCustomer = await prisma.customer.findUnique({
+          where: { userId },
+        });
+
+        if (existingCustomer) {
+          // Update existing customer record
+          await prisma.customer.update({
+            where: { userId },
+            data: {
+              name: updatedUser.name,
+              image: updatedUser.image,
+              phoneNumber: updatedUser.phoneNumber,
+              address: updatedUser.address,
+              city: updatedUser.city,
+              state: updatedUser.state,
+              zipCode: updatedUser.zipCode,
+              country: updatedUser.country,
+              dateOfBirth: updatedUser.dateOfBirth,
+              syncedAt: new Date(),
+            },
+          });
+          console.log("✅ Customer profile updated successfully");
+        } else {
+          // Create new customer record if it doesn't exist
+          await prisma.customer.create({
+            data: {
+              userId: updatedUser.id,
+              email: updatedUser.email,
+              name: updatedUser.name,
+              image: updatedUser.image,
+              phoneNumber: updatedUser.phoneNumber,
+              address: updatedUser.address,
+              city: updatedUser.city,
+              state: updatedUser.state,
+              zipCode: updatedUser.zipCode,
+              country: updatedUser.country,
+              dateOfBirth: updatedUser.dateOfBirth,
+              isVerified: updatedUser.isVerified,
+              provider: updatedUser.provider || 'local',
+              totalOrders: 0,
+              totalSpent: 0,
+              syncedAt: new Date(),
+            },
+          });
+          console.log("✅ Customer record created successfully");
+        }
+      } catch (customerSyncError) {
+        console.error("⚠️ Failed to sync customer profile:", customerSyncError);
+        // Don't fail the main update if customer sync fails
+      }
+
     } catch (error) {
       // If not found in users, try admins collection
       // Handle working hours for admin users
@@ -1664,6 +1721,151 @@ const getAdminSettings = async (req, res) => {
   }
 };
 
+// Get user statistics
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Find user in both collections to determine user type
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    let userType = "user";
+
+    if (!user) {
+      user = await prisma.admin.findUnique({
+        where: { id: userId },
+      });
+      userType = "admin";
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    // For admin users, return basic stats
+    if (userType === "admin") {
+      return res.json({
+        success: true,
+        data: {
+          accountType: "admin",
+          memberSince: user.createdAt,
+          lastLogin: user.lastLogin,
+          isVerified: user.isVerified,
+        },
+      });
+    }
+
+    // For regular users, get comprehensive stats
+    try {
+      // Get customer record for order stats
+      const customer = await prisma.customer.findUnique({
+        where: { userId },
+      });
+
+      // Get online orders
+      const onlineOrders = await prisma.onlineOrder.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Get POS orders if customer exists
+      let posOrders = [];
+      if (customer) {
+        posOrders = await prisma.pOSOrder.findMany({
+          where: { customerId: customer.id },
+          orderBy: { createdAt: "desc" },
+        });
+      }
+
+      // Calculate comprehensive stats
+      const allOrders = [...onlineOrders, ...posOrders];
+      const totalOrders = allOrders.length;
+      const totalSpent = allOrders.reduce((sum, order) => sum + order.total, 0);
+      const completedOrders = allOrders.filter(order => 
+        order.orderStatus === 'delivered' || order.orderStatus === 'completed'
+      ).length;
+      const pendingOrders = allOrders.filter(order => 
+        ['pending', 'confirmed', 'processing', 'shipped'].includes(order.orderStatus)
+      ).length;
+      const cancelledOrders = allOrders.filter(order => 
+        order.orderStatus === 'cancelled'
+      ).length;
+      const averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+      const lastOrderDate = allOrders.length > 0 ? allOrders[0].createdAt : null;
+
+      // Get recent orders (last 5)
+      const recentOrders = allOrders.slice(0, 5).map(order => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderType: order.orderType,
+        total: order.total,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        itemCount: Array.isArray(order.items) ? order.items.length : 0,
+      }));
+
+      const stats = {
+        accountType: "user",
+        memberSince: user.createdAt,
+        lastLogin: user.lastLogin,
+        isVerified: user.isVerified,
+        totalOrders,
+        totalSpent,
+        completedOrders,
+        pendingOrders,
+        cancelledOrders,
+        averageOrderValue,
+        lastOrderDate,
+        recentOrders,
+        // Wishlist and cart stats
+        wishlistItems: customer ? await prisma.wishlistItem.count({
+          where: { customerId: customer.id }
+        }) : 0,
+        cartItems: customer ? await prisma.cart.count({
+          where: { customerId: customer.id }
+        }) : 0,
+      };
+
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      console.error("Error calculating user stats:", error);
+      // Return basic stats if detailed calculation fails
+      res.json({
+        success: true,
+        data: {
+          accountType: "user",
+          memberSince: user.createdAt,
+          lastLogin: user.lastLogin,
+          isVerified: user.isVerified,
+          totalOrders: 0,
+          totalSpent: 0,
+          completedOrders: 0,
+          pendingOrders: 0,
+          cancelledOrders: 0,
+          averageOrderValue: 0,
+          lastOrderDate: null,
+          recentOrders: [],
+          wishlistItems: 0,
+          cartItems: 0,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Get user stats error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get user statistics",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -1682,4 +1884,5 @@ module.exports = {
   addAddress,
   updateAddress,
   deleteAddress,
+  getUserStats,
 };
