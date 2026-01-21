@@ -73,6 +73,9 @@ const expenseCategoryRoutes = require('./purchase/expenseCategoryRoutes');
 const expenseRoutes = require('./purchase/expenseRoutes');
 const purchaseReportRoutes = require('./purchase/reportRoutes');
 
+// Init routes (for manual admin initialization)
+const initRoutes = require('./init');
+
 const router = express.Router();
 
 // Root route - API information
@@ -118,6 +121,9 @@ router.get('/health', async (req, res) => {
 
 // Auth routes
 router.use('/auth', authRoutes);
+
+// Init routes (manual admin initialization)
+router.use('/init', initRoutes);
 
 // Dashboard routes
 router.use('/dashboard', dashboardRoutes);
