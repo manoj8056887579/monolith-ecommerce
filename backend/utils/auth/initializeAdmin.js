@@ -14,7 +14,7 @@ async function initializeAdmin() {
 
     if (!adminEmail || !adminPassword) {
       console.log("⚠️  ADMIN_EMAIL and ADMIN_PASSWORD not set - skipping admin initialization");
-      return;
+      return { success: false, message: "Environment variables not set" };
     }
 
     console.log(`📧 Admin email from env: ${adminEmail}`);
@@ -38,7 +38,7 @@ async function initializeAdmin() {
       console.log(`   ID: ${existingAdmin.id}`);
       console.log(`   Email: ${existingAdmin.email}`);
       console.log(`   Name: ${existingAdmin.name}`);
-      return;
+      return { success: true, message: "Admin already exists", admin: existingAdmin };
     }
 
     console.log("🌱 Initializing default admin user...");
@@ -90,6 +90,8 @@ async function initializeAdmin() {
     console.log("✅ Default working hours (24/7) configured!");
     console.log(`📧 Email: ${adminEmail}`);
     console.log("⚠️  Please complete onboarding wizard on first login");
+    
+    return { success: true, message: "Admin created successfully", admin: adminUser };
   } catch (error) {
     console.error("❌ Error initializing admin user:");
     console.error("   Error name:", error.name);
@@ -100,9 +102,10 @@ async function initializeAdmin() {
     if (error.meta) {
       console.error("   Error meta:", JSON.stringify(error.meta, null, 2));
     }
-    console.error("   Full error:", error);
-    // Don't throw - let the server start even if admin creation fails
-    // Admin can be created manually later
+    console.error("   Stack trace:", error.stack);
+    
+    // Return error info instead of throwing
+    return { success: false, message: error.message, error };
   }
 }
 
