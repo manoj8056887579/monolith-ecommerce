@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { prisma } = require("../../config/database");
 const sessionManager = require("../../utils/auth/sessionManager");
 const { sendEmail: sendSMTPEmail, sendEmailWithEnv } = require("../../config/connectSMTP");
+const { sendNewUserRegistrationAlert, sendWelcomeNotification } = require("../../utils/notification/sendNotification");
 
 // Email helper - uses SMTP configuration
 const sendEmail = async (emailData) => {
@@ -64,7 +65,7 @@ const generateRandomToken = () => {
 const register = async (req, res) => {
   try {
     console.log("📝 Registration request received:", req.body.email);
-    const { email, password, name, phoneNumber } = req.body;
+    const { email, password, name, phoneNumber, fcmToken } = req.body;
 
     // Validation
     if (!email || !password || !name || !phoneNumber) {
@@ -129,30 +130,37 @@ const register = async (req, res) => {
     // Generate verification token
     const verificationToken = generateRandomToken();
 
+    // Prepare user data
+    const userData = {
+      email,
+      password: hashedPassword,
+      name,
+      phoneNumber,
+      verificationToken,
+    };
+
+    // Add FCM token if provided
+    if (fcmToken) {
+      userData.fcmToken = fcmToken;
+      console.log("📱 FCM token will be saved during registration");
+    }
+
     // Create user in appropriate collection
     console.log("💾 Creating user in database...");
     const user = isAdmin
       ? await prisma.admin.create({
-          data: {
-            email,
-            password: hashedPassword,
-            name,
-            phoneNumber,
-            verificationToken,
-          },
+          data: userData,
         })
       : await prisma.user.create({
-          data: {
-            email,
-            password: hashedPassword,
-            name,
-            phoneNumber,
-            verificationToken,
-          },
+          data: userData,
         });
     console.log("✅ User created:", user.id);
+    if (fcmToken) {
+      console.log(`📱 FCM token saved for new ${isAdmin ? 'admin' : 'user'}: ${user.email}`);
+    }
 
     // Create Customer record for non-admin users (monolith approach)
+    let customerId = null;
     if (!isAdmin) {
       try {
         console.log("📝 Creating customer record for user:", user.id);
@@ -166,6 +174,7 @@ const register = async (req, res) => {
             provider: 'local',
           },
         });
+        customerId = customer.id;
         console.log("✅ Customer record created:", customer.id);
       } catch (customerError) {
         console.error("❌ Failed to create customer record:");
@@ -221,6 +230,30 @@ const register = async (req, res) => {
         console.error("Failed to send email:", err);
       }
     });
+
+    // Send new user registration notification to admins (only for non-admin users)
+    if (!isAdmin) {
+      setImmediate(async () => {
+        try {
+          await sendNewUserRegistrationAlert(user.name, user.email, customerId);
+          console.log(`📱 New user registration notification sent to admins`);
+        } catch (notifError) {
+          console.error('⚠️ Failed to send registration notification:', notifError.message);
+        }
+      });
+
+      // Send welcome notification to the new user (if FCM token exists)
+      if (fcmToken) {
+        setImmediate(async () => {
+          try {
+            await sendWelcomeNotification(user.id, user.name);
+            console.log(`🎉 Welcome notification sent to user: ${user.name}`);
+          } catch (notifError) {
+            console.error('⚠️ Failed to send welcome notification:', notifError.message);
+          }
+        });
+      }
+    }
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({
@@ -233,7 +266,7 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
 
     // Validation
     if (!email || !password) {
@@ -302,16 +335,22 @@ const login = async (req, res) => {
       });
     }
 
-    // Update last login in appropriate collection
+    // Update last login and FCM token in appropriate collection
+    const updateData = { lastLogin: new Date() };
+    if (fcmToken) {
+      updateData.fcmToken = fcmToken;
+      console.log(`📱 FCM token saved for ${userType}: ${user.email}`);
+    }
+
     if (userType === "admin") {
       await prisma.admin.update({
         where: { id: user.id },
-        data: { lastLogin: new Date() },
+        data: updateData,
       });
     } else {
       await prisma.user.update({
         where: { id: user.id },
-        data: { lastLogin: new Date() },
+        data: updateData,
       });
     }
 
@@ -370,7 +409,7 @@ const login = async (req, res) => {
 // Google OAuth callback
 const googleCallback = async (req, res) => {
   try {
-    const { googleId, email, name, image } = req.body;
+    const { googleId, email, name, image, fcmToken } = req.body;
 
     if (!googleId || !email || !name) {
       return res.status(400).json({
@@ -422,6 +461,12 @@ const googleCallback = async (req, res) => {
         lastLogin: new Date(),
       };
       
+      // Save FCM token if provided
+      if (fcmToken) {
+        updateData.fcmToken = fcmToken;
+        console.log(`📱 FCM token saved for Google ${isAdmin ? 'admin' : 'user'}: ${email}`);
+      }
+      
       // Only update name if user was previously a Google user (not local registration)
       // This preserves the name user chose during registration
       if (user.provider === "google") {
@@ -456,32 +501,30 @@ const googleCallback = async (req, res) => {
     } else {
       // Create new user in appropriate collection (auto-register)
       console.log("🆕 Auto-registering new Google user:", email);
+      
+      const createData = {
+        email,
+        googleId,
+        name,
+        image,
+        provider: "google",
+        isVerified: true, // Google users are auto-verified
+        lastLogin: new Date(),
+      };
+      
+      // Save FCM token if provided
+      if (fcmToken) {
+        createData.fcmToken = fcmToken;
+        console.log(`📱 FCM token saved for new Google ${isAdmin ? 'admin' : 'user'}: ${email}`);
+      }
+      
       user = isAdmin
-        ? await prisma.admin.create({
-            data: {
-              email,
-              googleId,
-              name,
-              image,
-              provider: "google",
-              isVerified: true, // Google users are auto-verified
-              lastLogin: new Date(),
-            },
-          })
-        : await prisma.user.create({
-            data: {
-              email,
-              googleId,
-              name,
-              image,
-              provider: "google",
-              isVerified: true, // Google users are auto-verified
-              lastLogin: new Date(),
-            },
-          });
+        ? await prisma.admin.create({ data: createData })
+        : await prisma.user.create({ data: createData });
       console.log("✅ Google user auto-registered:", user.id);
 
       // Create Customer record for non-admin users (monolith approach)
+      let customerId = null;
       if (!isAdmin) {
         try {
           console.log("📝 Creating customer record for Google user:", user.id);
@@ -495,12 +538,35 @@ const googleCallback = async (req, res) => {
               provider: 'google',
             },
           });
+          customerId = customer.id;
           console.log("✅ Customer record created for Google user:", customer.id);
         } catch (customerError) {
           console.error("❌ Failed to create customer record for Google user:");
           console.error("Error details:", customerError);
           console.error("User data:", { userId: user.id, email: user.email, name: user.name });
           // Don't fail authentication if customer creation fails
+        }
+
+        // Send new user registration notification to admins (non-blocking)
+        setImmediate(async () => {
+          try {
+            await sendNewUserRegistrationAlert(user.name, user.email, customerId);
+            console.log(`📱 New Google user registration notification sent to admins`);
+          } catch (notifError) {
+            console.error('⚠️ Failed to send registration notification:', notifError.message);
+          }
+        });
+
+        // Send welcome notification to the new Google user (non-blocking)
+        if (fcmToken) {
+          setImmediate(async () => {
+            try {
+              await sendWelcomeNotification(user.id, user.name);
+              console.log(`🎉 Welcome notification sent to Google user: ${user.name}`);
+            } catch (notifError) {
+              console.error('⚠️ Failed to send welcome notification:', notifError.message);
+            }
+          });
         }
       }
     }
@@ -1035,6 +1101,63 @@ const updateProfile = async (req, res) => {
           createdAt: true,
         },
       });
+
+      // Sync profile information to Customer collection for regular users
+      try {
+        console.log("🔄 Syncing user profile to customer collection...");
+        
+        // Check if customer record exists
+        const existingCustomer = await prisma.customer.findUnique({
+          where: { userId },
+        });
+
+        if (existingCustomer) {
+          // Update existing customer record
+          await prisma.customer.update({
+            where: { userId },
+            data: {
+              name: updatedUser.name,
+              image: updatedUser.image,
+              phoneNumber: updatedUser.phoneNumber,
+              address: updatedUser.address,
+              city: updatedUser.city,
+              state: updatedUser.state,
+              zipCode: updatedUser.zipCode,
+              country: updatedUser.country,
+              dateOfBirth: updatedUser.dateOfBirth,
+              syncedAt: new Date(),
+            },
+          });
+          console.log("✅ Customer profile updated successfully");
+        } else {
+          // Create new customer record if it doesn't exist
+          await prisma.customer.create({
+            data: {
+              userId: updatedUser.id,
+              email: updatedUser.email,
+              name: updatedUser.name,
+              image: updatedUser.image,
+              phoneNumber: updatedUser.phoneNumber,
+              address: updatedUser.address,
+              city: updatedUser.city,
+              state: updatedUser.state,
+              zipCode: updatedUser.zipCode,
+              country: updatedUser.country,
+              dateOfBirth: updatedUser.dateOfBirth,
+              isVerified: updatedUser.isVerified,
+              provider: updatedUser.provider || 'local',
+              totalOrders: 0,
+              totalSpent: 0,
+              syncedAt: new Date(),
+            },
+          });
+          console.log("✅ Customer record created successfully");
+        }
+      } catch (customerSyncError) {
+        console.error("⚠️ Failed to sync customer profile:", customerSyncError);
+        // Don't fail the main update if customer sync fails
+      }
+
     } catch (error) {
       // If not found in users, try admins collection
       // Handle working hours for admin users
@@ -1598,6 +1721,151 @@ const getAdminSettings = async (req, res) => {
   }
 };
 
+// Get user statistics
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Find user in both collections to determine user type
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    let userType = "user";
+
+    if (!user) {
+      user = await prisma.admin.findUnique({
+        where: { id: userId },
+      });
+      userType = "admin";
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    // For admin users, return basic stats
+    if (userType === "admin") {
+      return res.json({
+        success: true,
+        data: {
+          accountType: "admin",
+          memberSince: user.createdAt,
+          lastLogin: user.lastLogin,
+          isVerified: user.isVerified,
+        },
+      });
+    }
+
+    // For regular users, get comprehensive stats
+    try {
+      // Get customer record for order stats
+      const customer = await prisma.customer.findUnique({
+        where: { userId },
+      });
+
+      // Get online orders
+      const onlineOrders = await prisma.onlineOrder.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Get POS orders if customer exists
+      let posOrders = [];
+      if (customer) {
+        posOrders = await prisma.pOSOrder.findMany({
+          where: { customerId: customer.id },
+          orderBy: { createdAt: "desc" },
+        });
+      }
+
+      // Calculate comprehensive stats
+      const allOrders = [...onlineOrders, ...posOrders];
+      const totalOrders = allOrders.length;
+      const totalSpent = allOrders.reduce((sum, order) => sum + order.total, 0);
+      const completedOrders = allOrders.filter(order => 
+        order.orderStatus === 'delivered' || order.orderStatus === 'completed'
+      ).length;
+      const pendingOrders = allOrders.filter(order => 
+        ['pending', 'confirmed', 'processing', 'shipped'].includes(order.orderStatus)
+      ).length;
+      const cancelledOrders = allOrders.filter(order => 
+        order.orderStatus === 'cancelled'
+      ).length;
+      const averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+      const lastOrderDate = allOrders.length > 0 ? allOrders[0].createdAt : null;
+
+      // Get recent orders (last 5)
+      const recentOrders = allOrders.slice(0, 5).map(order => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderType: order.orderType,
+        total: order.total,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        itemCount: Array.isArray(order.items) ? order.items.length : 0,
+      }));
+
+      const stats = {
+        accountType: "user",
+        memberSince: user.createdAt,
+        lastLogin: user.lastLogin,
+        isVerified: user.isVerified,
+        totalOrders,
+        totalSpent,
+        completedOrders,
+        pendingOrders,
+        cancelledOrders,
+        averageOrderValue,
+        lastOrderDate,
+        recentOrders,
+        // Wishlist and cart stats
+        wishlistItems: customer ? await prisma.wishlistItem.count({
+          where: { customerId: customer.id }
+        }) : 0,
+        cartItems: customer ? await prisma.cart.count({
+          where: { customerId: customer.id }
+        }) : 0,
+      };
+
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      console.error("Error calculating user stats:", error);
+      // Return basic stats if detailed calculation fails
+      res.json({
+        success: true,
+        data: {
+          accountType: "user",
+          memberSince: user.createdAt,
+          lastLogin: user.lastLogin,
+          isVerified: user.isVerified,
+          totalOrders: 0,
+          totalSpent: 0,
+          completedOrders: 0,
+          pendingOrders: 0,
+          cancelledOrders: 0,
+          averageOrderValue: 0,
+          lastOrderDate: null,
+          recentOrders: [],
+          wishlistItems: 0,
+          cartItems: 0,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Get user stats error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get user statistics",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -1616,4 +1884,5 @@ module.exports = {
   addAddress,
   updateAddress,
   deleteAddress,
+  getUserStats,
 };

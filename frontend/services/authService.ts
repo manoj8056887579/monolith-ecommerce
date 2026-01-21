@@ -32,6 +32,31 @@ export interface WorkingHour {
   endTime: string;
 }
 
+export interface UserStats {
+  accountType: 'user' | 'admin';
+  memberSince: string;
+  lastLogin?: string;
+  isVerified: boolean;
+  totalOrders: number;
+  totalSpent: number;
+  completedOrders: number;
+  pendingOrders: number;
+  cancelledOrders: number;
+  averageOrderValue: number;
+  lastOrderDate?: string;
+  recentOrders: Array<{
+    id: string;
+    orderNumber: string;
+    orderType: string;
+    total: number;
+    orderStatus: string;
+    createdAt: string;
+    itemCount: number;
+  }>;
+  wishlistItems: number;
+  cartItems: number;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -61,6 +86,14 @@ export const authService = {
     const response = await axiosInstance.put<ApiResponse<AdminProfile>>(
       "/api/auth/admin/profile",
       data
+    );
+    return response.data.data;
+  },
+
+  // Get user statistics
+  getUserStats: async (): Promise<UserStats> => {
+    const response = await axiosInstance.get<ApiResponse<UserStats>>(
+      "/api/auth/stats"
     );
     return response.data.data;
   },
