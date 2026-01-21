@@ -221,17 +221,63 @@ export default function CheckoutPageClient() {
 
     try {
       setIsLoadingAddresses(true);
-      const response = await addressService.getAddresses(user.id);
-      setAddresses(response.data);
+      
+      // Fetch saved addresses and user profile in parallel
+      const [addressResponse, userResponse] = await Promise.all([
+        addressService.getAddresses(user.id),
+        axiosInstance.get('/api/auth/me')
+      ]);
+      
+      let allAddresses = [...addressResponse.data];
+      
+      // Add user profile address if it has complete address information
+      if (userResponse.data.success && userResponse.data.data) {
+        const userData = userResponse.data.data;
+        
+        // Check if user has complete address information
+        if (userData.address && userData.city && userData.state && userData.zipCode && userData.country) {
+          const profileAddress: Address = {
+            id: 'profile-address',
+            name: userData.name,
+            phone: userData.phoneNumber || '',
+            alternatePhone: '',
+            addressLine1: userData.address,
+            addressLine2: '',
+            landmark: '',
+            city: userData.city,
+            state: userData.state,
+            pincode: userData.zipCode,
+            country: userData.country,
+            addressType: 'home',
+            isDefault: false,
+            createdAt: userData.createdAt || new Date().toISOString(),
+            updatedAt: userData.updatedAt || new Date().toISOString(),
+          };
+          
+          // Check if this address already exists in saved addresses
+          const isDuplicate = addressResponse.data.some(addr => 
+            addr.addressLine1.toLowerCase().trim() === userData.address.toLowerCase().trim() &&
+            addr.city.toLowerCase().trim() === userData.city.toLowerCase().trim() &&
+            addr.pincode === userData.zipCode
+          );
+          
+          // Only add if it's not a duplicate
+          if (!isDuplicate) {
+            allAddresses.unshift(profileAddress); // Add at the beginning
+          }
+        }
+      }
+      
+      setAddresses(allAddresses);
       
       // Restore checkout state from sessionStorage
-      restoreCheckoutState(response.data);
+      restoreCheckoutState(allAddresses);
       
       // If no address was restored from session, auto-select default or first
       const savedAddressId = sessionStorage.getItem(CHECKOUT_STORAGE_KEYS.SELECTED_ADDRESS_ID);
       if (!savedAddressId) {
         const defaultAddr =
-          response.data.find((a) => a.isDefault) || response.data[0];
+          allAddresses.find((a) => a.isDefault) || allAddresses[0];
         if (defaultAddr) {
           setSelectedAddress(defaultAddr);
         }
@@ -239,15 +285,15 @@ export default function CheckoutPageClient() {
       
       // Validate step access after addresses are loaded
       // If user is on review/payment but has no address, redirect to address step
-      if (response.data.length === 0 && (currentStep === 'review' || currentStep === 'payment')) {
+      if (allAddresses.length === 0 && (currentStep === 'review' || currentStep === 'payment')) {
         setCurrentStep('address');
         updateUrlWithStep('address');
         toast.info('Please add a delivery address first');
       } else if (currentStep !== 'address') {
         // Validate that saved address still exists
         const savedAddress = savedAddressId 
-          ? response.data.find(a => a.id === savedAddressId)
-          : response.data.find(a => a.isDefault) || response.data[0];
+          ? allAddresses.find(a => a.id === savedAddressId)
+          : allAddresses.find(a => a.isDefault) || allAddresses[0];
           
         if (!savedAddress) {
           setCurrentStep('address');
@@ -334,6 +380,57 @@ export default function CheckoutPageClient() {
     }
   };
 
+  // Apply coupon from available coupons list (direct apply - no input fill)
+  const handleApplyCouponFromList = async (code: string) => {
+    if (!user?.id) {
+      toast.error('Please login to apply coupon');
+      return;
+    }
+
+    try {
+      setIsValidatingCoupon(true);
+
+      // Get unique category IDs from cart items
+      const categoryIds: string[] = Array.from(
+        new Set(items.map(item => item.categoryId).filter(Boolean))
+      );
+
+      const requestData = {
+        code: code.toUpperCase(),
+        userId: user.id,
+        orderValue: totalPrice,
+        categories: categoryIds,
+      };
+
+      console.log('🎫 Applying coupon from list:', requestData);
+
+      const response = await axiosInstance.post(
+        '/api/online/coupons/validate',
+        requestData
+      );
+
+      if (response.data.success) {
+        setAppliedCoupon({
+          code: response.data.data.code,
+          discountAmount: response.data.data.discountAmount,
+        });
+        setShowAvailableCoupons(false);
+        toast.success(`Coupon applied! You saved ${currencySymbol}${response.data.data.discountAmount.toFixed(2)}`);
+      } else {
+        toast.error(response.data.message || 'Invalid coupon code');
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to apply coupon');
+      }
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  // Apply coupon from manual input
   const handleApplyCoupon = async (code?: string) => {
     const couponToApply = code || couponCode;
     
@@ -351,17 +448,23 @@ export default function CheckoutPageClient() {
       setIsValidatingCoupon(true);
       setCouponError('');
 
-      // Get cart categories for validation (if available)
-      const categories: string[] = [];
+      // Get unique category IDs from cart items
+      const categoryIds: string[] = Array.from(
+        new Set(items.map(item => item.categoryId).filter(Boolean))
+      );
+
+      const requestData = {
+        code: couponToApply.toUpperCase(),
+        userId: user.id,
+        orderValue: totalPrice,
+        categories: categoryIds, // Send category IDs
+      };
+
+      console.log('🎫 Applying coupon with data:', requestData);
 
       const response = await axiosInstance.post(
         '/api/online/coupons/validate',
-        {
-          code: couponToApply.toUpperCase(),
-          userId: user.id,
-          orderValue: totalPrice,
-          categories,
-        }
+        requestData
       );
 
       if (response.data.success) {
@@ -546,20 +649,14 @@ export default function CheckoutPageClient() {
     setIsPlacingOrder(true);
     try {
       // Call the order API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/online/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id,
-          deliveryAddressId: selectedAddress.id,
-          paymentMethod: selectedPaymentMethod === 'online' ? 'razorpay' : 'cod',
-          couponCode: appliedCoupon?.code || null,
-        }),
+      const response = await axiosInstance.post('/api/online/orders', {
+        userId: user?.id,
+        deliveryAddressId: selectedAddress.id,
+        paymentMethod: selectedPaymentMethod === 'online' ? 'razorpay' : 'cod',
+        couponCode: appliedCoupon?.code || null,
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       console.log('Order API Response:', data);
 
@@ -613,42 +710,30 @@ export default function CheckoutPageClient() {
             console.log('Payment successful, verifying...', razorpayResponse);
             try {
               // Verify payment
-              const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payment-gateway/verify`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  razorpay_order_id: razorpayResponse.razorpay_order_id,
-                  razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                  razorpay_signature: razorpayResponse.razorpay_signature,
-                }),
+              const verifyResponse = await axiosInstance.post('/api/payment-gateway/verify', {
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
               });
 
-              const verifyData = await verifyResponse.json();
+              const verifyData = verifyResponse.data;
 
               if (!verifyData.success) {
                 throw new Error('Payment verification failed');
               }
 
               // Confirm order after payment
-              const confirmResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/online/orders/confirm`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userId: user?.id,
-                  deliveryAddressId: selectedAddress.id,
-                  paymentMethod: 'razorpay',
-                  couponCode: appliedCoupon?.code || null,
-                  orderNumber: data.data.orderNumber,
-                  paymentId: razorpayResponse.razorpay_payment_id,
-                  razorpayOrderId: razorpayResponse.razorpay_order_id,
-                }),
+              const confirmResponse = await axiosInstance.post('/api/online/orders/confirm', {
+                userId: user?.id,
+                deliveryAddressId: selectedAddress.id,
+                paymentMethod: 'razorpay',
+                couponCode: appliedCoupon?.code || null,
+                orderNumber: data.data.orderNumber,
+                paymentId: razorpayResponse.razorpay_payment_id,
+                razorpayOrderId: razorpayResponse.razorpay_order_id,
               });
 
-              const confirmData = await confirmResponse.json();
+              const confirmData = confirmResponse.data;
 
               if (!confirmData.success) {
                 throw new Error('Failed to confirm order');
@@ -1256,15 +1341,6 @@ export default function CheckoutPageClient() {
                     {totalPrice.toFixed(2)}
                   </span>
                 </div>
-                {totalSavings > 0 && (
-                  <div className="flex justify-between text-green-600 text-xs sm:text-sm">
-                    <span>Discount</span>
-                    <span className="font-semibold">
-                      -{currencySymbol}
-                      {totalSavings.toFixed(2)}
-                    </span>
-                  </div>
-                )}
                 {appliedCoupon && (
                   <div className="flex justify-between text-green-600 text-xs sm:text-sm">
                     <span className="truncate mr-2">Coupon ({appliedCoupon.code})</span>
@@ -1349,8 +1425,7 @@ export default function CheckoutPageClient() {
                           {availableCoupons.map((coupon) => (
                             <div
                               key={coupon.id}
-                              className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-[#e63946] hover:shadow-md transition-all cursor-pointer"
-                              onClick={() => handleApplyCoupon(coupon.code)}
+                              className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-[#e63946] hover:shadow-md transition-all"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
@@ -1384,8 +1459,12 @@ export default function CheckoutPageClient() {
                                   <p className="text-sm font-bold text-green-600 mb-1">
                                     Save {currencySymbol}{coupon.estimatedDiscount.toFixed(2)}
                                   </p>
-                                  <button className="px-3 py-1 bg-[#e63946] text-white text-xs font-semibold rounded hover:bg-[#c1121f] transition-colors">
-                                    APPLY
+                                  <button 
+                                    onClick={() => handleApplyCouponFromList(coupon.code)}
+                                    disabled={isValidatingCoupon}
+                                    className="px-3 py-1 bg-[#e63946] text-white text-xs font-semibold rounded hover:bg-[#c1121f] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                  >
+                                    {isValidatingCoupon ? 'APPLYING...' : 'APPLY'}
                                   </button>
                                 </div>
                               </div>
@@ -1457,11 +1536,11 @@ export default function CheckoutPageClient() {
                 </div>
               )}
 
-              {totalSavings > 0 && (
+              {appliedCoupon && (
                 <div className="bg-green-50 border border-green-200 rounded-md p-3">
                   <p className="text-xs text-green-800 font-medium">
                     🎉 You are saving {currencySymbol}
-                    {totalSavings.toFixed(2)} on this order!
+                    {appliedCoupon.discountAmount.toFixed(2)} with coupon!
                   </p>
                 </div>
               )}
