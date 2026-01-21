@@ -17,7 +17,8 @@ const {
   getAddresses,
   addAddress,
   updateAddress,
-  deleteAddress
+  deleteAddress,
+  getUserStats
 } = require('../../controllers/auth/authController');
 
 // Import partner auth controller
@@ -29,6 +30,12 @@ const {
   requestPasswordReset: partnerRequestPasswordReset,
   resetPassword: partnerResetPassword,
 } = require('../../controllers/partner/partnerAuthController');
+
+// Import FCM token controller
+const {
+  saveFCMToken,
+  removeFCMToken,
+} = require('../../controllers/auth/fcmTokenController');
 
 const { authenticateToken } = require('../../middleware/auth');
 
@@ -60,8 +67,13 @@ router.get('/google/failure', googleAuthFailure);
 
 // Protected routes
 router.get('/me', authenticateToken, getCurrentUser);
+router.get('/stats', authenticateToken, getUserStats);
 router.post('/logout', authenticateToken, logout);
 router.put('/profile', authenticateToken, updateProfile);
+
+// FCM Token routes
+router.post('/fcm-token', saveFCMToken);
+router.delete('/fcm-token', removeFCMToken);
 
 // Address management routes
 router.get('/addresses', authenticateToken, getAddresses);
