@@ -2,6 +2,9 @@ import { AppLayout } from "@/components/Layouts/applayout";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchCategories, fetchWebSettings, fetchCompanySettings } from "@/lib/server-fetch";
 
+// Force dynamic rendering for all pages in this layout
+export const dynamic = 'force-dynamic';
+
 export default async function MainLayout({
   children,
 }: {

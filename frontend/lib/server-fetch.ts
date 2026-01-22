@@ -28,7 +28,7 @@ export async function fetchBanners() {
 export async function fetchCategories() {
   try {
     const res = await fetch(`${API_URL}/api/online/frontend/categories`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -56,7 +56,7 @@ export async function fetchHomepageProducts(params: {
     const res = await fetch(
       `${API_URL}/api/online/frontend/homepage-products?${queryParams.toString()}`,
       {
-        next: { revalidate: 300 }, // Cache for 5 minutes
+        cache: 'no-store', // Always get fresh data
       }
     );
     if (!res.ok) return [];
@@ -98,7 +98,7 @@ export async function fetchProducts(params?: {
     const res = await fetch(
       `${API_URL}/api/online/frontend/products?${queryParams.toString()}`,
       {
-        next: { revalidate: 300 }, // Cache for 5 minutes
+        cache: 'no-store', // Always get fresh data
       }
     );
     if (!res.ok) {
@@ -118,7 +118,7 @@ export async function fetchProducts(params?: {
 export async function fetchProductById(id: string) {
   try {
     const res = await fetch(`${API_URL}/api/online/frontend/products/${id}`, {
-      next: { revalidate: 300 }, // Cache for 5 minutes
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -137,7 +137,7 @@ export async function fetchFrequentlyBoughtTogether(productId: string) {
     const res = await fetch(
       `${API_URL}/api/online/frontend/products/${productId}/frequently-bought-together`,
       {
-        next: { revalidate: 300 }, // Cache for 5 minutes
+        cache: 'no-store', // Always get fresh data
       }
     );
     if (!res.ok) return [];
@@ -155,7 +155,7 @@ export async function fetchFrequentlyBoughtTogether(productId: string) {
 export async function fetchCategoryById(id: string) {
   try {
     const res = await fetch(`${API_URL}/api/online/frontend/categories/${id}`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -172,7 +172,7 @@ export async function fetchCategoryById(id: string) {
 export async function fetchWebSettings() {
   try {
     const res = await fetch(`${API_URL}/api/web/web-settings`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -189,7 +189,7 @@ export async function fetchWebSettings() {
 export async function fetchCompanySettings() {
   try {
     const res = await fetch(`${API_URL}/api/web/company`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -206,7 +206,7 @@ export async function fetchCompanySettings() {
 export async function fetchPolicy(slug: string) {
   try {
     const res = await fetch(`${API_URL}/api/web/policies/public/${slug}`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: 'no-store', // Always get fresh data
     });
     if (!res.ok) return null;
     const data = await res.json();
