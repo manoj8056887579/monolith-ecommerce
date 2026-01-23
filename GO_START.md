@@ -68,8 +68,8 @@ ADMIN_EMAIL="manoj@mntfuture.com"
 ADMIN_PASSWORD="Admin@123"
 
 # Google OAuth
-GOOGLE_CLIENT_ID="695990651332-udtvtse7oehjvagl27icb7gegfvc996c.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="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"
+GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # Email Configuration (SMTP)
 SMTP_FROM_EMAIL="noreply@gmail.com"
@@ -79,13 +79,13 @@ SMTP_USER="manoj@mntfuture.com"
 SMTP_PASS="natw dewa qmwp jgpw"
 
 # AWS Configuration
-AWS_ACCESS_KEY_ID=AKIA6NYRE6WB4DJJBXCF
-AWS_SECRET_ACCESS_KEY=uIioNm/DcySTacYtcvqAiIlaXVn645LpjL4HVVc/
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
 AWS_REGION=eu-north-1
-AWS_S3_BUCKET_NAME=mnt-ecommerce-2025
+AWS_S3_BUCKET_NAME=your-s3-bucket-name
 
 # AI/ML Services
-GROQ_API_KEY=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
+GROQ_API_KEY=your-groq-api-key
 
 
 ---
