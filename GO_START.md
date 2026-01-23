@@ -60,32 +60,32 @@ BACKEND_URL=http://localhost:5000
 FRONTEND_URL=http://localhost:3000
 
 # Database Configuration - MongoDB (Single Database for Monolith)
-MONGO_URL="mongodb+srv://manoj_db_user:manoj8056@cluster0.syddbnf.mongodb.net/monolith-ecommerce"
+MONGO_URL="mongodb+srv://your-username:your-password@cluster.mongodb.net/monolith-ecommerce"
 
 # Authentication & Security
-JWT_SECRET=d4f2606026d611596f6d6ebf6da023db4cc25beb1a1e51cfbea13d76ac104cbba7bef38b07d92e3a412838a7aac286b60af7a0483c8addd6231ce44e5ec95f37mtqbnk6t
-ADMIN_EMAIL="manoj@mntfuture.com"
+JWT_SECRET=your-jwt-secret-key-here
+ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="Admin@123"
 
 # Google OAuth
 GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_CLIENT_SECRET="GOCSPX-your-google-client-secret"
 
 # Email Configuration (SMTP)
-SMTP_FROM_EMAIL="noreply@gmail.com"
+SMTP_FROM_EMAIL="noreply@example.com"
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT="587"
-SMTP_USER="manoj@mntfuture.com"
-SMTP_PASS="natw dewa qmwp jgpw"
+SMTP_USER="your-email@example.com"
+SMTP_PASS="your-app-password"
 
 # AWS Configuration
-AWS_ACCESS_KEY_ID=your-aws-access-key-id
-AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
 AWS_REGION=eu-north-1
 AWS_S3_BUCKET_NAME=your-s3-bucket-name
 
 # AI/ML Services
-GROQ_API_KEY=your-groq-api-key
+GROQ_API_KEY=gsk_YOUR_GROQ_API_KEY
 
 
 ---
